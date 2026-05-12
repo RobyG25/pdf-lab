@@ -453,76 +453,56 @@
 
   <!-- ===== CROP ===== -->
   <div class="panel" id="panel-crop">
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> קובץ PDF לחיתוך</div>
-      <div class="dropzone" id="drop-crop">
-        <input type="file" accept=".pdf" onchange="handleFile('crop',this)">
-        <span class="drop-icon">✂️</span>
-        <div class="drop-text">גרור PDF לכאן</div>
-        <div class="drop-sub">הגדר שוליים לחיתוך — הקובץ החדש יישמר עם הקרופ</div>
+    <!-- Drop zone (shown before file loaded) -->
+    <div id="crop-dropzone-wrap">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> קובץ PDF לחיתוך</div>
+        <div class="dropzone" id="drop-crop">
+          <input type="file" accept=".pdf" id="crop-file-input" onchange="loadCropFile(this.files[0])">
+          <span class="drop-icon">✂️</span>
+          <div class="drop-text">גרור PDF לכאן או לחץ לבחירה</div>
+          <div class="drop-sub">סמן את אזור החיתוך ישירות על הקובץ — HARDCODED בקובץ החדש</div>
+        </div>
       </div>
-      <div class="file-name" id="fn-crop"></div>
     </div>
 
-    <div class="card">
-      <div class="card-title"><span class="dot"></span> הגדרות חיתוך (פיקסלים)</div>
-      <p style="font-size:0.82rem;color:var(--text2);margin-bottom:1rem">
-        הגדר כמה פיקסלים לחתוך מכל צד. הקרופ יהיה HARDCODED בקובץ החדש.
-      </p>
-      <div class="crop-grid">
-        <div class="control-group">
-          <label>⬆ חיתוך מלמעלה</label>
-          <input type="number" id="crop-top" value="0" min="0">
-        </div>
-        <div class="control-group">
-          <label>⬇ חיתוך מלמטה</label>
-          <input type="number" id="crop-bottom" value="0" min="0">
-        </div>
-        <div class="control-group">
-          <label>⬅ חיתוך מימין</label>
-          <input type="number" id="crop-right" value="0" min="0">
-        </div>
-        <div class="control-group">
-          <label>➡ חיתוך משמאל</label>
-          <input type="number" id="crop-left" value="0" min="0">
-        </div>
-      </div>
-      <div style="margin-top:1rem">
-        <div class="control-group">
-          <label>החל על עמודים</label>
-          <select id="crop-pages">
-            <option value="all">כל העמודים</option>
-            <option value="even">עמודים זוגיים</option>
-            <option value="odd">עמודים אי-זוגיים</option>
-            <option value="custom">עמודים מסוימים</option>
-          </select>
-        </div>
-        <div id="crop-custom-wrap" style="display:none;margin-top:0.75rem">
-          <div class="control-group">
-            <label>מספרי עמודים (למשל: 1,3,5-8)</label>
-            <input type="text" id="crop-custom" placeholder="1,3,5-8">
+    <!-- Main crop layout (shown after file loaded) -->
+    <div id="crop-main" style="display:none">
+      <div class="card" style="padding:0.9rem 1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+          <div style="font-size:0.85rem;color:var(--text2)">✏️ גרור על כל עמוד לסימון אזור החיתוך</div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="resetCrop()">🔄 קובץ חדש</button>
+            <button class="btn btn-primary" id="crop-dl-btn" onclick="downloadCropped()" disabled>⬇ הורד PDF מחותך</button>
           </div>
         </div>
+        <div id="crop-prog-wrap" style="display:none;margin-top:0.75rem">
+          <div class="progress-bar show"><div class="progress-fill" id="crop-prog-fill"></div></div>
+          <div id="crop-status-msg" style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem"></div>
+        </div>
       </div>
-      <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="doCrop()">✂️ חתוך ויצור קובץ חדש</button>
-        <button class="btn btn-outline" onclick="previewCrop()">👁 תצוגה מקדימה</button>
+      <div id="crop-pages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.25rem;margin-top:0"></div>
+    </div>
+
+    <!-- Preview modal -->
+    <div id="cropPreviewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;overflow-y:auto;padding:2rem 1rem;flex-direction:column;align-items:center;gap:1.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;max-width:900px;background:rgba(15,15,19,.95);padding:.75rem 1rem;border-radius:10px;border:1px solid var(--border);position:sticky;top:0">
+        <span style="font-weight:600">👁 תצוגה מקדימה</span>
+        <button class="btn btn-outline" onclick="closeCropPreview()">✕ סגור</button>
       </div>
-      <div class="status" id="status-crop"></div>
-      <div class="progress-bar" id="prog-crop"><div class="progress-fill" id="progf-crop"></div></div>
-      <canvas id="crop-preview-canvas" style="display:none;max-width:100%;margin-top:1rem;border:1px solid var(--border);border-radius:8px"></canvas>
+      <div id="cropPreviewPages"></div>
     </div>
   </div>
 
   <!-- ===== TTS ===== -->
   <div class="panel" id="panel-tts">
     <div class="card">
-      <div class="card-title"><span class="dot"></span> קובץ PDF לקריאה בקול <span class="badge">Google TTS → MP3</span></div>
+      <div class="card-title"><span class="dot"></span> קובץ PDF לקריאה בקול <span class="badge">WebM Audio</span></div>
       <div class="dropzone" id="drop-tts">
         <input type="file" accept=".pdf" onchange="handleFile('tts',this)">
         <span class="drop-icon">🔊</span>
         <div class="drop-text">גרור PDF לכאן</div>
-        <div class="drop-sub">הטקסט יחולץ ויומר לקובץ MP3 בעברית — חינם לחלוטין</div>
+        <div class="drop-sub">הטקסט יחולץ ויומר לקובץ אודיו — חינם, ללא API</div>
       </div>
       <div class="file-name" id="fn-tts"></div>
     </div>
@@ -556,8 +536,9 @@
       </div>
 
       <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="downloadMP3()">⬇ צור והורד MP3</button>
-        <button class="btn btn-outline" onclick="downloadTTSText()">💾 שמור טקסט בלבד</button>
+        <button class="btn btn-primary" id="btn-tts-record" onclick="recordAudio()">⏺ הקלט והורד קובץ אודיו</button>
+        <button class="btn btn-danger" id="btn-tts-stop" onclick="stopRecording()" style="display:none">⏹ עצור הקלטה</button>
+        <button class="btn btn-outline" onclick="downloadTTSText()">💾 שמור טקסט</button>
       </div>
       <div class="status" id="status-tts"></div>
       <div class="progress-bar" id="prog-tts"><div class="progress-fill" id="progf-tts"></div></div>
@@ -817,123 +798,296 @@ async function doSplit(){
 }
 
 // ===== CROP =====
-document.getElementById('crop-pages').addEventListener('change',function(){
-  document.getElementById('crop-custom-wrap').style.display=this.value==='custom'?'block':'none';
-});
+// ===== VISUAL CROP SYSTEM =====
+let cropPdfBytes=null, cropPdfJsDoc=null, cropNumPages=0;
+const cropPages=[];
 
-async function doCrop(){
-  if(!files.crop){setStatus('crop','⚠️ בחר קובץ PDF תחילה','error');return}
-  const top=parseFloat(document.getElementById('crop-top').value)||0;
-  const bottom=parseFloat(document.getElementById('crop-bottom').value)||0;
-  const right=parseFloat(document.getElementById('crop-right').value)||0;
-  const left=parseFloat(document.getElementById('crop-left').value)||0;
-  setStatus('crop','מחתוך...','info');setProgress('crop',10);
-  try{
-    const ab=await readFileAsArrayBuffer(files.crop);
-    const pdf=await PDFLib.PDFDocument.load(ab);
-    const total=pdf.getPageCount();
-    const mode=document.getElementById('crop-pages').value;
-    let idxs;
-    if(mode==='all') idxs=[...Array(total).keys()];
-    else if(mode==='even') idxs=[...Array(total).keys()].filter(i=>i%2===1);
-    else if(mode==='odd') idxs=[...Array(total).keys()].filter(i=>i%2===0);
-    else idxs=parsePages(document.getElementById('crop-custom').value,total);
-    setProgress('crop',30);
-    idxs.forEach(i=>{
-      const page=pdf.getPage(i);
-      const {width,height}=page.getSize();
-      page.setCropBox(left, bottom, width-left-right, height-top-bottom);
-      page.setMediaBox(left, bottom, width-left-right, height-top-bottom);
-    });
-    setProgress('crop',80);
-    const bytes=await pdf.save();
-    setProgress('crop',100);
-    downloadBlob(bytes,'cropped_'+files.crop.name);
-    setStatus('crop','✓ הקובץ נחתך ונשמר!','success');
-  }catch(e){setStatus('crop','שגיאה: '+e.message,'error')}
+// drag-drop for crop
+(function(){
+  const dz=document.getElementById('drop-crop');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('drag');
+    const f=e.dataTransfer.files[0];
+    if(f&&f.name.endsWith('.pdf')) loadCropFile(f);
+  });
+})();
+
+async function loadCropFile(file){
+  if(!file)return;
+  document.getElementById('crop-dropzone-wrap').style.display='none';
+  document.getElementById('crop-main').style.display='block';
+  showCropProg(0,1,'טוען...');
+  cropPdfBytes=await file.arrayBuffer();
+  cropPdfJsDoc=await pdfjsLib.getDocument({data:cropPdfBytes.slice(0)}).promise;
+  cropNumPages=cropPdfJsDoc.numPages;
+  cropPages.length=0;
+  document.getElementById('crop-pages-grid').innerHTML='';
+  const plibDoc=await PDFLib.PDFDocument.load(cropPdfBytes);
+  for(let i=1;i<=cropNumPages;i++){
+    showCropProg(i-1,cropNumPages,`מרנדר עמוד ${i}/${cropNumPages}...`);
+    buildCropCard(i);
+    await renderCropPage(i,plibDoc);
+  }
+  hideCropProg();
+  document.getElementById('crop-dl-btn').disabled=false;
 }
 
-async function previewCrop(){
-  if(!files.crop){setStatus('crop','⚠️ בחר קובץ PDF תחילה','error');return}
-  const top=parseFloat(document.getElementById('crop-top').value)||0;
-  const bottom=parseFloat(document.getElementById('crop-bottom').value)||0;
-  const right=parseFloat(document.getElementById('crop-right').value)||0;
-  const left=parseFloat(document.getElementById('crop-left').value)||0;
-  setStatus('crop','יוצר תצוגה מקדימה...','info');
-  try{
-    const ab=await readFileAsArrayBuffer(files.crop);
-    const pdf=await pdfjsLib.getDocument({data:ab}).promise;
-    const page=await pdf.getPage(1);
-    const vp=page.getViewport({scale:1});
-    const canvas=document.getElementById('crop-preview-canvas');
-    canvas.style.display='block';
-    const scale=Math.min(600/vp.width,1);
-    const vp2=page.getViewport({scale});
-    canvas.width=vp2.width; canvas.height=vp2.height;
-    const ctx=canvas.getContext('2d');
-    await page.render({canvasContext:ctx,viewport:vp2}).promise;
-    // draw crop overlay
-    ctx.fillStyle='rgba(255,107,107,0.35)';
-    if(top>0) ctx.fillRect(0,0,canvas.width,top*scale);
-    if(bottom>0) ctx.fillRect(0,canvas.height-bottom*scale,canvas.width,bottom*scale);
-    if(left>0) ctx.fillRect(0,0,left*scale,canvas.height);
-    if(right>0) ctx.fillRect(canvas.width-right*scale,0,right*scale,canvas.height);
-    setStatus('crop','✓ תצוגה מקדימה — האזור האדום יחותך','success');
-  }catch(e){setStatus('crop','שגיאה: '+e.message,'error')}
+function buildCropCard(i){
+  const grid=document.getElementById('crop-pages-grid');
+  const card=document.createElement('div');
+  card.className='page-card';card.id=`cropcard-${i}`;
+  card.style.cssText='background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;transition:border-color .2s';
+  card.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--surface2);border-bottom:1px solid var(--border)">
+      <span style="font-size:0.85rem;font-weight:500">עמוד ${i}</span>
+      <span id="cropbadge-${i}" style="font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text2);border:1px solid var(--border)">ללא חיתוך</span>
+    </div>
+    <div style="position:relative;background:#0a0a0e;display:flex;align-items:center;justify-content:center;min-height:180px;cursor:crosshair;user-select:none;overflow:hidden" id="cropwrap-${i}">
+      <div style="width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:2rem auto"></div>
+    </div>
+    <div style="padding:.6rem .9rem;display:flex;align-items:center;gap:.5rem;border-top:1px solid var(--border);flex-wrap:wrap">
+      <span id="cropinfo-${i}" style="font-size:0.75rem;color:var(--text2);margin-right:auto">—</span>
+      <button class="btn btn-outline" style="padding:5px 11px;font-size:0.75rem" onclick="cropApplyToAll(${i})">📋 החל על כולם</button>
+      <button class="btn btn-outline" style="padding:5px 11px;font-size:0.75rem" onclick="cropClear(${i})">✖</button>
+    </div>`;
+  grid.appendChild(card);
+  cropPages[i-1]={canvasEl:null,canvasW:0,canvasH:0,pdfW:0,pdfH:0,pdfX:0,pdfY:0,crop:null,overlayEl:null,pageRotation:0};
 }
 
-// ===== TTS — Google TTS → MP3 =====
+async function renderCropPage(i,plibDoc){
+  const idx=i-1;
+  const pjsPage=await cropPdfJsDoc.getPage(i);
+  cropPages[idx].pageRotation=pjsPage.rotate||0;
+  const baseVp=pjsPage.getViewport({scale:1});
+  const baseLong=Math.max(baseVp.width,baseVp.height);
+  const scale=Math.min(Math.max(900/baseLong,1.0),4.0);
+  const vp=pjsPage.getViewport({scale});
+  const canvas=document.createElement('canvas');
+  canvas.width=vp.width;canvas.height=vp.height;
+  await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  const wrap=document.getElementById(`cropwrap-${i}`);
+  wrap.innerHTML='';wrap.appendChild(canvas);
+  const plibPage=plibDoc.getPage(idx);
+  const mb=plibPage.getMediaBox();
+  cropPages[idx].canvasEl=canvas;
+  cropPages[idx].canvasW=canvas.width;cropPages[idx].canvasH=canvas.height;
+  cropPages[idx].pdfW=mb.width;cropPages[idx].pdfH=mb.height;
+  cropPages[idx].pdfX=mb.x||0;cropPages[idx].pdfY=mb.y||0;
+  attachCropDrag(i,wrap,canvas);
+}
+
+function attachCropDrag(i,wrap,canvas){
+  let mode=null,sx=0,sy=0,startCrop=null;
+  function cpos(e){
+    const r=canvas.getBoundingClientRect();
+    const kx=canvas.width/r.width,ky=canvas.height/r.height;
+    const cx=e.touches?e.touches[0].clientX:e.clientX;
+    const cy=e.touches?e.touches[0].clientY:e.clientY;
+    return{x:Math.max(0,Math.min(canvas.width,(cx-r.left)*kx)),y:Math.max(0,Math.min(canvas.height,(cy-r.top)*ky))};
+  }
+  function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+  canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();});
+  canvas.addEventListener('touchstart',e=>{mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();},{passive:false});
+  function onMove(e){
+    if(!mode)return;
+    const p=cpos(e);const pd=cropPages[i-1];
+    if(mode==='draw'){cropDrawOv(i,sx,sy,p.x,p.y);}
+    else if(mode==='move'){
+      const dx=p.x-sx,dy=p.y-sy;
+      pd.crop={x:clamp(startCrop.x+dx,0,pd.canvasW-startCrop.w),y:clamp(startCrop.y+dy,0,pd.canvasH-startCrop.h),w:startCrop.w,h:startCrop.h};
+      cropRedrawOv(i);
+    } else {
+      let{x,y,w,h}=startCrop;const dx=p.x-sx,dy=p.y-sy;
+      if(mode.includes('e'))w=clamp(startCrop.w+dx,20,pd.canvasW-x);
+      if(mode.includes('s'))h=clamp(startCrop.h+dy,20,pd.canvasH-y);
+      if(mode.includes('w')){const nx=clamp(startCrop.x+dx,0,startCrop.x+startCrop.w-20);w=startCrop.x+startCrop.w-nx;x=nx;}
+      if(mode.includes('n')){const ny=clamp(startCrop.y+dy,0,startCrop.y+startCrop.h-20);h=startCrop.y+startCrop.h-ny;y=ny;}
+      pd.crop={x,y,w,h};cropRedrawOv(i);
+    }
+  }
+  window.addEventListener('mousemove',onMove);
+  canvas.addEventListener('touchmove',e=>{onMove(e);e.preventDefault();},{passive:false});
+  function onUp(e){
+    if(!mode)return;
+    if(mode==='draw'){
+      const p=cpos(e);const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
+      const w=Math.abs(p.x-sx),h=Math.abs(p.y-sy);
+      if(w>8&&h>8){cropPages[i-1].crop={x,y,w,h};cropRedrawOv(i);cropUpdateBadge(i);}
+      else if(!cropPages[i-1].crop)cropClear(i);
+    } else cropUpdateBadge(i);
+    mode=null;
+  }
+  window.addEventListener('mouseup',onUp);
+  canvas.addEventListener('touchend',e=>{const t=e.changedTouches[0];onUp({touches:[],clientX:t.clientX,clientY:t.clientY});});
+  wrap._startCropInteraction=function(m,e){const p=cpos(e);mode=m;sx=p.x;sy=p.y;startCrop={...cropPages[i-1].crop};e.preventDefault();e.stopPropagation();};
+}
+
+function cropRedrawOv(i){const pd=cropPages[i-1];if(!pd.crop)return;const{x,y,w,h}=pd.crop;cropDrawOvRect(i,x,y,w,h);}
+
+function cropDrawOv(i,x1,y1,x2,y2){
+  const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);
+  cropDrawOvRect(i,x,y,w,h);
+}
+
+function cropDrawOvRect(i,x,y,w,h){
+  const pd=cropPages[i-1];const wrap=document.getElementById(`cropwrap-${i}`);
+  if(!pd.canvasEl)return;
+  if(!pd.overlayEl){
+    pd.overlayEl=document.createElement('div');
+    pd.overlayEl.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+    wrap.style.position='relative';wrap.appendChild(pd.overlayEl);
+  }
+  const r=pd.canvasEl.getBoundingClientRect();
+  const kx=r.width/pd.canvasW,ky=r.height/pd.canvasH;
+  const rx=x*kx,ry=y*ky,rw=w*kx,rh=h*ky;
+  const pw=r.width,ph=r.height;
+  const HANDLES=['nw','n','ne','w','e','sw','s','se'];
+  const hStyle=(hk)=>{
+    const s={position:'absolute',width:'14px',height:'14px',background:'#fff',border:'2px solid var(--accent)',borderRadius:'3px',pointerEvents:'all',zIndex:10,boxShadow:'0 1px 4px rgba(0,0,0,.5)'};
+    if(hk.includes('n'))s.top='-7px'; if(hk.includes('s'))s.bottom='-7px';
+    if(hk.includes('w'))s.left='-7px'; if(hk.includes('e'))s.right='-7px';
+    if(hk==='n'||hk==='s')s.left='calc(50% - 7px)';
+    if(hk==='w'||hk==='e')s.top='calc(50% - 7px)';
+    const cursors={nw:'nw-resize',ne:'ne-resize',sw:'sw-resize',se:'se-resize',n:'n-resize',s:'s-resize',w:'w-resize',e:'e-resize'};
+    s.cursor=cursors[hk];
+    return Object.entries(s).map(([k,v])=>`${k.replace(/([A-Z])/g,'-$1').toLowerCase()}:${v}`).join(';');
+  };
+  const handlesHTML=HANDLES.map(hk=>`<div style="${hStyle(hk)}" onmousedown="document.getElementById('cropwrap-${i}')._startCropInteraction('resize-${hk}',event)" ontouchstart="document.getElementById('cropwrap-${i}')._startCropInteraction('resize-${hk}',event)"></div>`).join('');
+  pd.overlayEl.innerHTML=`
+    <div style="position:absolute;top:0;left:0;width:${pw}px;height:${ry}px;background:rgba(0,0,0,.52)"></div>
+    <div style="position:absolute;top:${ry+rh}px;left:0;width:${pw}px;bottom:0;background:rgba(0,0,0,.52)"></div>
+    <div style="position:absolute;top:${ry}px;left:0;width:${rx}px;height:${rh}px;background:rgba(0,0,0,.52)"></div>
+    <div style="position:absolute;top:${ry}px;left:${rx+rw}px;right:0;height:${rh}px;background:rgba(0,0,0,.52)"></div>
+    <div style="position:absolute;top:${ry}px;left:${rx}px;width:${rw}px;height:${rh}px;border:2px solid var(--accent);pointer-events:all;cursor:move"
+      onmousedown="document.getElementById('cropwrap-${i}')._startCropInteraction('move',event)"
+      ontouchstart="document.getElementById('cropwrap-${i}')._startCropInteraction('move',event)">
+      ${handlesHTML}
+    </div>`;
+  const scx=pd.pdfW/pd.canvasW,scy=pd.pdfH/pd.canvasH;
+  document.getElementById(`cropinfo-${i}`).innerHTML=`גודל: <span style="color:var(--accent)">${Math.round(w*scx)} × ${Math.round(h*scy)}</span> pt`;
+}
+
+function cropUpdateBadge(i){
+  const b=document.getElementById(`cropbadge-${i}`);
+  const c=document.getElementById(`cropcard-${i}`);
+  if(cropPages[i-1].crop){
+    b.textContent='✓ מסומן';b.style.cssText='font-size:0.75px;padding:2px 8px;border-radius:20px;background:rgba(78,205,196,.15);color:var(--accent2);border:1px solid rgba(78,205,196,.3);font-size:0.75rem';
+    c.style.borderColor='rgba(124,111,247,.5)';
+  } else {
+    b.textContent='ללא חיתוך';b.style.cssText='font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text2);border:1px solid var(--border)';
+    c.style.borderColor='var(--border)';
+  }
+}
+
+function cropClear(i){
+  cropPages[i-1].crop=null;
+  if(cropPages[i-1].overlayEl)cropPages[i-1].overlayEl.innerHTML='';
+  document.getElementById(`cropinfo-${i}`).innerHTML='—';
+  cropUpdateBadge(i);
+}
+
+function cropApplyToAll(src){
+  const pd=cropPages[src-1];
+  if(!pd.crop){alert('סמן חיתוך בעמוד הזה קודם.');return}
+  const rx=pd.crop.x/pd.canvasW,ry=pd.crop.y/pd.canvasH;
+  const rw=pd.crop.w/pd.canvasW,rh=pd.crop.h/pd.canvasH;
+  for(let i=1;i<=cropNumPages;i++){
+    if(i===src)continue;
+    const t=cropPages[i-1];if(!t.canvasW)continue;
+    t.crop={x:rx*t.canvasW,y:ry*t.canvasH,w:rw*t.canvasW,h:rh*t.canvasH};
+    cropRedrawOv(i);cropUpdateBadge(i);
+  }
+}
+
+function showCropProg(done,total,msg){
+  document.getElementById('crop-prog-wrap').style.display='block';
+  document.getElementById('crop-prog-fill').style.width=Math.round((done/total)*100)+'%';
+  if(msg)document.getElementById('crop-status-msg').textContent=msg;
+}
+function hideCropProg(){
+  document.getElementById('crop-prog-fill').style.width='100%';
+  setTimeout(()=>{document.getElementById('crop-prog-wrap').style.display='none'},700);
+}
+
+function resetCrop(){
+  cropPdfBytes=null;cropPdfJsDoc=null;cropNumPages=0;cropPages.length=0;
+  document.getElementById('crop-main').style.display='none';
+  document.getElementById('crop-dropzone-wrap').style.display='block';
+  document.getElementById('crop-pages-grid').innerHTML='';
+  document.getElementById('crop-dl-btn').disabled=true;
+  document.getElementById('crop-file-input').value='';
+}
+
+function closeCropPreview(){
+  document.getElementById('cropPreviewModal').style.display='none';
+  document.body.style.overflow='';
+}
+
+async function downloadCropped(){
+  document.getElementById('crop-dl-btn').disabled=true;
+  showCropProg(0,cropNumPages,'מכין...');
+  const f=n=>n.toFixed(4);
+  try{
+    const doc=await PDFLib.PDFDocument.load(cropPdfBytes);
+    const srcDoc=await PDFLib.PDFDocument.load(cropPdfBytes);
+    const total=doc.getPageCount();
+    for(let i=1;i<=total;i++){
+      showCropProg(i-1,total,`מחתך עמוד ${i}/${total}...`);
+      const pd=cropPages[i-1];
+      if(!pd||!pd.crop)continue;
+      const rot=pd.pageRotation||0;
+      const isLandscape=(rot===90||rot===270);
+      const pdfVisW=isLandscape?pd.pdfH:pd.pdfW;
+      const pdfVisH=isLandscape?pd.pdfW:pd.pdfH;
+      const scx=pdfVisW/pd.canvasW,scy=pdfVisH/pd.canvasH;
+      const visX=pd.crop.x*scx,visY=pd.crop.y*scy;
+      const visW=pd.crop.w*scx,visH=pd.crop.h*scy;
+      let cropX,cropY,cropW,cropH;
+      if(rot===0){cropX=pd.pdfX+visX;cropY=pd.pdfY+pd.pdfH-(visY+visH);cropW=visW;cropH=visH;}
+      else if(rot===90){cropX=pd.pdfX+visY;cropY=pd.pdfY+visX;cropW=visH;cropH=visW;}
+      else if(rot===180){cropX=pd.pdfX+pd.pdfW-(visX+visW);cropY=pd.pdfY+visY;cropW=visW;cropH=visH;}
+      else{cropX=pd.pdfX+pd.pdfW-(visY+visH);cropY=pd.pdfY+pd.pdfH-(visX+visW);cropW=visH;cropH=visW;}
+      const[xobj]=await doc.embedPages([srcDoc.getPage(i-1)]);
+      const xName='Pg'+i;
+      const pg=doc.getPage(i-1);
+      pg.setSize(cropW,cropH);pg.setMediaBox(0,0,cropW,cropH);
+      pg.setCropBox(0,0,cropW,cropH);pg.setBleedBox(0,0,cropW,cropH);pg.setTrimBox(0,0,cropW,cropH);
+      const stream=['q',`0 0 ${f(cropW)} ${f(cropH)} re W n`,`1 0 0 1 ${f(-cropX)} ${f(-cropY)} cm`,`/${xName} Do`,'Q'].join('\n');
+      const streamRef=doc.context.register(doc.context.stream(stream,{Length:stream.length}));
+      pg.node.set(PDFLib.PDFName.of('Contents'),streamRef);
+      const xObjDict=doc.context.obj({[xName]:xobj.ref});
+      const resDict=doc.context.obj({XObject:xObjDict});
+      pg.node.set(PDFLib.PDFName.of('Resources'),resDict);
+    }
+    showCropProg(total,total,'שומר...');
+    const bytes=await doc.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='cropped.pdf';a.click();
+    URL.revokeObjectURL(url);
+    hideCropProg();
+    document.getElementById('crop-status-msg').textContent='✅ הקובץ הורד בהצלחה!';
+  }catch(err){
+    hideCropProg();
+    document.getElementById('crop-status-msg').textContent='❌ שגיאה: '+err.message;
+  }
+  document.getElementById('crop-dl-btn').disabled=false;
+}
+
+// ===== TTS — Tab Audio Capture → WebM =====
 document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-function splitTextToChunks(text, maxLen=190){
-  if(text.length<=maxLen) return [text.trim()].filter(Boolean);
-  const chunks=[];
-  let remaining=text;
-  while(remaining.length>0){
-    if(remaining.length<=maxLen){chunks.push(remaining.trim());break;}
-    const segment=remaining.slice(0,maxLen);
-    let splitAt=-1;
-    for(let i=segment.length-1;i>=0;i--){
-      if('.!?\n。'.includes(segment[i])){splitAt=i+1;break;}
-    }
-    if(splitAt<=0){
-      for(let i=segment.length-1;i>=0;i--){
-        if(',;،:'.includes(segment[i])){splitAt=i+1;break;}
-      }
-    }
-    if(splitAt<=0){splitAt=segment.lastIndexOf(' ');if(splitAt<=0)splitAt=maxLen;}
-    chunks.push(remaining.slice(0,splitAt).trim());
-    remaining=remaining.slice(splitAt).trim();
-  }
-  return chunks.filter(Boolean);
-}
+let mediaRecorder=null, recordedChunks=[], ttsUtterance=null;
 
-async function fetchTTSChunk(text, lang){
-  const encoded=encodeURIComponent(text);
-  const googleUrl=`https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${lang}&client=tw-ob&ttsspeed=1`;
-  const proxies=[
-    `https://corsproxy.io/?url=${encodeURIComponent(googleUrl)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(googleUrl)}`,
-    `https://thingproxy.freeboard.io/fetch/${googleUrl}`,
-  ];
-  let lastErr='';
-  for(const proxyUrl of proxies){
-    try{
-      const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
-      if(!resp.ok){lastErr='status '+resp.status;continue;}
-      const buf=await resp.arrayBuffer();
-      if(buf.byteLength>0) return buf;
-      lastErr='תגובה ריקה';
-    }catch(e){lastErr=e.message;}
-  }
-  throw new Error('כל ה-proxy נכשלו: '+lastErr);
-}
-
-async function downloadMP3(){
+async function recordAudio(){
   if(!files.tts){setStatus('tts','⚠️ בחר קובץ PDF תחילה','error');return}
-  setStatus('tts','מחלץ טקסט...','info');setProgress('tts',5);
+  setStatus('tts','מחלץ טקסט...','info');setProgress('tts',10);
   try{
     ttsText=await extractText(
       files.tts,
@@ -945,30 +1099,99 @@ async function downloadMP3(){
     document.getElementById('tts-text-card').style.display='block';
     const words=ttsText.trim().split(/\s+/).length;
     document.getElementById('tts-word-count').textContent=words.toLocaleString()+' מילים';
-    const lang=document.getElementById('tts-lang').value;
-    const chunks=splitTextToChunks(ttsText);
-    setStatus('tts',`ממיר לMP3... 0 / ${chunks.length} חלקים`,'info');
-    const buffers=[];
-    for(let i=0;i<chunks.length;i++){
-      const buf=await fetchTTSChunk(chunks[i],lang);
-      buffers.push(buf);
-      setProgress('tts',5+Math.round((i+1)/chunks.length*90));
-      setStatus('tts',`ממיר לMP3... ${i+1} / ${chunks.length} חלקים`,'info');
-      if(i<chunks.length-1) await new Promise(r=>setTimeout(r,150));
+    setProgress('tts',30);
+
+    // Capture tab audio (Chrome: shows "share tab" dialog with audio checkbox)
+    setStatus('tts','בחר את הטאב הזה ✓ שתף אודיו של הטאב, לחץ שתף','info');
+    let stream;
+    try{
+      stream=await navigator.mediaDevices.getDisplayMedia({
+        video:{displaySurface:'browser'},
+        audio:{suppressLocalAudioPlayback:false},
+        preferCurrentTab:true
+      });
+    }catch(err){
+      // User cancelled or not supported — fall back to speech-only (no file)
+      setStatus('tts','ביטלת את השיתוף — מקריא בלבד (ללא הורדה)','info');
+      speakOnly();
+      return;
     }
-    // Concatenate all MP3 buffers
-    const totalLen=buffers.reduce((s,b)=>s+b.byteLength,0);
-    const merged=new Uint8Array(totalLen);
-    let offset=0;
-    for(const b of buffers){merged.set(new Uint8Array(b),offset);offset+=b.byteLength;}
-    const blob=new Blob([merged],{type:'audio/mpeg'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url;a.download='audio.mp3';a.click();
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    setProgress('tts',100);
-    setStatus('tts','✓ קובץ MP3 הורד בהצלחה!','success');
+
+    // Check if audio track exists
+    const audioTracks=stream.getAudioTracks();
+    if(audioTracks.length===0){
+      stream.getTracks().forEach(t=>t.stop());
+      setStatus('tts','⚠️ לא נבחר אודיו — סמן "שתף אודיו של הטאב" בדיאלוג','error');
+      return;
+    }
+
+    // Use only the audio track
+    const audioStream=new MediaStream(audioTracks);
+    // Stop video track immediately (we don't need it)
+    stream.getVideoTracks().forEach(t=>t.stop());
+
+    const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ?'audio/webm;codecs=opus':'audio/webm';
+    recordedChunks=[];
+    mediaRecorder=new MediaRecorder(audioStream,{mimeType});
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data)};
+    mediaRecorder.onstop=()=>{
+      audioStream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(recordedChunks,{type:mimeType});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download='audio.webm';a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+      setStatus('tts','✓ קובץ אודיו הורד! (webm — נפתח בכל נגן)','success');
+      setProgress('tts',100);
+      document.getElementById('btn-tts-record').style.display='inline-flex';
+      document.getElementById('btn-tts-stop').style.display='none';
+    };
+
+    mediaRecorder.start(100);
+    document.getElementById('btn-tts-record').style.display='none';
+    document.getElementById('btn-tts-stop').style.display='inline-flex';
+    setStatus('tts','🔴 מקליט ומקריא — המתן לסיום אוטומטי...','info');
+    setProgress('tts',60);
+
+    // Speak
+    speechSynthesis.cancel();
+    const lang=document.getElementById('tts-lang').value;
+    ttsUtterance=new SpeechSynthesisUtterance(ttsText);
+    ttsUtterance.lang=lang==='he'?'he-IL':lang==='ar'?'ar-SA':lang==='ru'?'ru-RU':lang==='fr'?'fr-FR':'en-US';
+    const voices=speechSynthesis.getVoices();
+    const match=voices.find(v=>v.lang.startsWith(lang));
+    if(match)ttsUtterance.voice=match;
+    ttsUtterance.rate=1;ttsUtterance.pitch=1;
+    ttsUtterance.onend=()=>{
+      setTimeout(()=>{if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();},600);
+    };
+    ttsUtterance.onerror=e=>{
+      setStatus('tts','שגיאה: '+e.error,'error');
+      if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();
+    };
+    speechSynthesis.speak(ttsUtterance);
+
   }catch(e){setStatus('tts','שגיאה: '+e.message,'error')}
+}
+
+function speakOnly(){
+  speechSynthesis.cancel();
+  const lang=document.getElementById('tts-lang').value;
+  const utt=new SpeechSynthesisUtterance(ttsText);
+  utt.lang=lang==='he'?'he-IL':'en-US';
+  const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith(lang));
+  if(v)utt.voice=v;
+  utt.onend=()=>setStatus('tts','✓ הסתיים','success');
+  speechSynthesis.speak(utt);
+  setStatus('tts','🔊 מקריא בלבד...','info');
+}
+
+function stopRecording(){
+  speechSynthesis.cancel();
+  if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();
+  document.getElementById('btn-tts-record').style.display='inline-flex';
+  document.getElementById('btn-tts-stop').style.display='none';
 }
 function downloadTTSText(){
   if(!ttsText){setStatus('tts','אין טקסט — חלץ קובץ תחילה','error');return}
