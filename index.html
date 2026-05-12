@@ -547,7 +547,6 @@
 const files = {};
 let rotDeg = 90;
 let ttsUtterance = null;
-let ttsPaused = false;
 let ttsText = '';
 let transText = '';
 
@@ -882,7 +881,7 @@ function attachCropDrag(i,wrap,canvas){
     return{x:Math.max(0,Math.min(canvas.width,(cx-r.left)*kx)),y:Math.max(0,Math.min(canvas.height,(cy-r.top)*ky))};
   }
   function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
-  canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();});
+  canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();cropDragging=true;});
   canvas.addEventListener('touchstart',e=>{mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();},{passive:false});
 
   canvas._cropMove=function(e){
@@ -915,16 +914,18 @@ function attachCropDrag(i,wrap,canvas){
 
   canvas.addEventListener('touchmove',e=>{canvas._cropMove(e);e.preventDefault();},{passive:false});
   canvas.addEventListener('touchend',e=>{const t=e.changedTouches[0];canvas._cropUp({touches:[],clientX:t.clientX,clientY:t.clientY});});
-  wrap._startCropInteraction=function(m,e){const p=cpos(e);mode=m;sx=p.x;sy=p.y;startCrop={...cropPages[i-1].crop};e.preventDefault();e.stopPropagation();};
+  wrap._startCropInteraction=function(m,e){const p=cpos(e);mode=m;sx=p.x;sy=p.y;startCrop={...cropPages[i-1].crop};e.preventDefault();e.stopPropagation();cropDragging=true;};
 }
 
-// Single global listeners for crop — no accumulation per page
+// Single global listeners for crop
+let cropDragging=false;
 document.addEventListener('mousemove',e=>{
-  document.querySelectorAll('canvas[id]').forEach(c=>{if(c._cropMove)c._cropMove(e);});
-  // also check canvases without id (crop canvases)
+  if(!cropDragging)return;
   cropPages.forEach(pd=>{if(pd.canvasEl&&pd.canvasEl._cropMove)pd.canvasEl._cropMove(e);});
 });
 document.addEventListener('mouseup',e=>{
+  if(!cropDragging)return;
+  cropDragging=false;
   cropPages.forEach(pd=>{if(pd.canvasEl&&pd.canvasEl._cropUp)pd.canvasEl._cropUp(e);});
 });
 
@@ -1086,7 +1087,7 @@ document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-let mediaRecorder=null, recordedChunks=[], ttsUtterance=null;
+let mediaRecorder=null, recordedChunks=[];
 
 async function recordAudio(){
   if(!files.tts){setStatus('tts','⚠️ בחר קובץ PDF תחילה','error');return}
