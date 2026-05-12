@@ -89,6 +89,7 @@
   .main{padding:2rem;max-width:900px;margin:0 auto}
   .panel{display:none}
   .panel.active{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
 
   /* CARDS */
   .card{
@@ -854,14 +855,22 @@ async function renderCropPage(i,plibDoc){
   const pjsPage=await cropPdfJsDoc.getPage(i);
   cropPages[idx].pageRotation=pjsPage.rotate||0;
   const baseVp=pjsPage.getViewport({scale:1});
-  const baseLong=Math.max(baseVp.width,baseVp.height);
-  const scale=Math.min(Math.max(900/baseLong,1.0),4.0);
+  // Scale to fit 600px wide max — display size matches canvas size
+  const scale=Math.min(600/baseVp.width, 2.0);
   const vp=pjsPage.getViewport({scale});
   const canvas=document.createElement('canvas');
-  canvas.width=vp.width;canvas.height=vp.height;
+  canvas.width=vp.width;
+  canvas.height=vp.height;
+  // Force canvas to display at exact pixel size — no CSS stretching
+  canvas.style.width=vp.width+'px';
+  canvas.style.height=vp.height+'px';
+  canvas.style.display='block';
+  canvas.style.maxWidth='100%';
   await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
   const wrap=document.getElementById(`cropwrap-${i}`);
-  wrap.innerHTML='';wrap.appendChild(canvas);
+  wrap.innerHTML='';
+  wrap.style.minHeight='unset';
+  wrap.appendChild(canvas);
   const plibPage=plibDoc.getPage(idx);
   const mb=plibPage.getMediaBox();
   cropPages[idx].canvasEl=canvas;
@@ -875,10 +884,13 @@ function attachCropDrag(i,wrap,canvas){
   let mode=null,sx=0,sy=0,startCrop=null;
   function cpos(e){
     const r=canvas.getBoundingClientRect();
-    const kx=canvas.width/r.width,ky=canvas.height/r.height;
     const cx=e.touches?e.touches[0].clientX:e.clientX;
     const cy=e.touches?e.touches[0].clientY:e.clientY;
-    return{x:Math.max(0,Math.min(canvas.width,(cx-r.left)*kx)),y:Math.max(0,Math.min(canvas.height,(cy-r.top)*ky))};
+    // Since canvas CSS size = canvas pixel size, ratio is always 1
+    return{
+      x:Math.max(0,Math.min(canvas.width, cx-r.left)),
+      y:Math.max(0,Math.min(canvas.height, cy-r.top))
+    };
   }
   function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
   canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();cropDragging=true;});
