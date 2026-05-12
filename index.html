@@ -274,19 +274,19 @@
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('rotate')">
+  <button class="tab active" onclick="switchTab('rotate',this)">
     <span class="tab-icon">🔄</span> סיבוב
   </button>
-  <button class="tab" onclick="switchTab('translate')">
+  <button class="tab" onclick="switchTab('translate',this)">
     <span class="tab-icon">🌐</span> תרגום
   </button>
-  <button class="tab" onclick="switchTab('split')">
+  <button class="tab" onclick="switchTab('split',this)">
     <span class="tab-icon">📰</span> פיצול עיתון
   </button>
-  <button class="tab" onclick="switchTab('crop')">
+  <button class="tab" onclick="switchTab('crop',this)">
     <span class="tab-icon">✂️</span> חיתוך
   </button>
-  <button class="tab" onclick="switchTab('tts')">
+  <button class="tab" onclick="switchTab('tts',this)">
     <span class="tab-icon">🔊</span> קריאה בקול
   </button>
 </div>
@@ -564,10 +564,10 @@ let transText = '';
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ===== TABS =====
-function switchTab(name){
+function switchTab(name, el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  event.currentTarget.classList.add('active');
+  el.classList.add('active');
   document.getElementById('panel-'+name).classList.add('active');
 }
 
