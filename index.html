@@ -912,12 +912,23 @@ function splitTextToChunks(text, maxLen=190){
 
 async function fetchTTSChunk(text, lang){
   const encoded=encodeURIComponent(text);
-  // Use a CORS proxy to reach Google TTS
   const googleUrl=`https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${lang}&client=tw-ob&ttsspeed=1`;
-  const proxyUrl=`https://api.allorigins.win/raw?url=${encodeURIComponent(googleUrl)}`;
-  const resp=await fetch(proxyUrl);
-  if(!resp.ok) throw new Error('שגיאה בקבלת אודיו מגוגל ('+resp.status+')');
-  return resp.arrayBuffer();
+  const proxies=[
+    `https://corsproxy.io/?url=${encodeURIComponent(googleUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(googleUrl)}`,
+    `https://thingproxy.freeboard.io/fetch/${googleUrl}`,
+  ];
+  let lastErr='';
+  for(const proxyUrl of proxies){
+    try{
+      const resp=await fetch(proxyUrl,{signal:AbortSignal.timeout(8000)});
+      if(!resp.ok){lastErr='status '+resp.status;continue;}
+      const buf=await resp.arrayBuffer();
+      if(buf.byteLength>0) return buf;
+      lastErr='תגובה ריקה';
+    }catch(e){lastErr=e.message;}
+  }
+  throw new Error('כל ה-proxy נכשלו: '+lastErr);
 }
 
 async function downloadMP3(){
