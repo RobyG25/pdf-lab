@@ -891,7 +891,8 @@ function attachCropDrag(i,wrap,canvas){
   function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
   canvas.addEventListener('mousedown',e=>{if(e.button!==0)return;mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();});
   canvas.addEventListener('touchstart',e=>{mode='draw';({x:sx,y:sy}=cpos(e));e.preventDefault();},{passive:false});
-  function onMove(e){
+
+  canvas._cropMove=function(e){
     if(!mode)return;
     const p=cpos(e);const pd=cropPages[i-1];
     if(mode==='draw'){cropDrawOv(i,sx,sy,p.x,p.y);}
@@ -907,10 +908,8 @@ function attachCropDrag(i,wrap,canvas){
       if(mode.includes('n')){const ny=clamp(startCrop.y+dy,0,startCrop.y+startCrop.h-20);h=startCrop.y+startCrop.h-ny;y=ny;}
       pd.crop={x,y,w,h};cropRedrawOv(i);
     }
-  }
-  window.addEventListener('mousemove',onMove);
-  canvas.addEventListener('touchmove',e=>{onMove(e);e.preventDefault();},{passive:false});
-  function onUp(e){
+  };
+  canvas._cropUp=function(e){
     if(!mode)return;
     if(mode==='draw'){
       const p=cpos(e);const x=Math.min(sx,p.x),y=Math.min(sy,p.y);
@@ -919,11 +918,22 @@ function attachCropDrag(i,wrap,canvas){
       else if(!cropPages[i-1].crop)cropClear(i);
     } else cropUpdateBadge(i);
     mode=null;
-  }
-  window.addEventListener('mouseup',onUp);
-  canvas.addEventListener('touchend',e=>{const t=e.changedTouches[0];onUp({touches:[],clientX:t.clientX,clientY:t.clientY});});
+  };
+
+  canvas.addEventListener('touchmove',e=>{canvas._cropMove(e);e.preventDefault();},{passive:false});
+  canvas.addEventListener('touchend',e=>{const t=e.changedTouches[0];canvas._cropUp({touches:[],clientX:t.clientX,clientY:t.clientY});});
   wrap._startCropInteraction=function(m,e){const p=cpos(e);mode=m;sx=p.x;sy=p.y;startCrop={...cropPages[i-1].crop};e.preventDefault();e.stopPropagation();};
 }
+
+// Single global listeners for crop — no accumulation per page
+document.addEventListener('mousemove',e=>{
+  document.querySelectorAll('canvas[id]').forEach(c=>{if(c._cropMove)c._cropMove(e);});
+  // also check canvases without id (crop canvases)
+  cropPages.forEach(pd=>{if(pd.canvasEl&&pd.canvasEl._cropMove)pd.canvasEl._cropMove(e);});
+});
+document.addEventListener('mouseup',e=>{
+  cropPages.forEach(pd=>{if(pd.canvasEl&&pd.canvasEl._cropUp)pd.canvasEl._cropUp(e);});
+});
 
 function cropRedrawOv(i){const pd=cropPages[i-1];if(!pd.crop)return;const{x,y,w,h}=pd.crop;cropDrawOvRect(i,x,y,w,h);}
 
