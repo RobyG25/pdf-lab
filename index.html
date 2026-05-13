@@ -489,12 +489,12 @@
   <!-- ===== TTS ===== -->
   <div class="panel" id="panel-tts">
     <div class="card">
-      <div class="card-title"><span class="dot"></span> קובץ PDF לקריאה בקול <span class="badge">WebM Audio</span></div>
+      <div class="card-title"><span class="dot"></span> קובץ PDF לקריאה בקול <span class="badge">Google TTS → MP3</span></div>
       <div class="dropzone" id="drop-tts">
         <input type="file" accept=".pdf" onchange="handleFile('tts',this)">
         <span class="drop-icon">🔊</span>
         <div class="drop-text">גרור PDF לכאן</div>
-        <div class="drop-sub">הטקסט יחולץ ויומר לקובץ אודיו — חינם, ללא API</div>
+        <div class="drop-sub">הטקסט יחולץ ויומר לקובץ MP3 — חינמי לחלוטין</div>
       </div>
       <div class="file-name" id="fn-tts"></div>
     </div>
@@ -547,7 +547,6 @@
 // ===== STATE =====
 const files = {};
 let rotDeg = 90;
-let ttsUtterance = null;
 let ttsText = '';
 let transText = '';
 
@@ -1017,7 +1016,7 @@ function cropUpdateBadge(i){
   const b=document.getElementById(`cropbadge-${i}`);
   const c=document.getElementById(`cropcard-${i}`);
   if(cropPages[i-1].crop){
-    b.textContent='✓ מסומן';b.style.cssText='font-size:0.75px;padding:2px 8px;border-radius:20px;background:rgba(78,205,196,.15);color:var(--accent2);border:1px solid rgba(78,205,196,.3);font-size:0.75rem';
+    b.textContent='✓ מסומן';b.style.cssText='font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(78,205,196,.15);color:var(--accent2);border:1px solid rgba(78,205,196,.3)';
     c.style.borderColor='rgba(124,111,247,.5)';
   } else {
     b.textContent='ללא חיתוך';b.style.cssText='font-size:0.75rem;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.06);color:var(--text2);border:1px solid var(--border)';
@@ -1128,8 +1127,33 @@ document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
+function splitTextToChunks(text, maxLen=950){
+  if(text.length<=maxLen) return [text.trim()].filter(Boolean);
+  const chunks=[];
+  let remaining=text;
+  while(remaining.length>0){
+    if(remaining.length<=maxLen){chunks.push(remaining.trim());break;}
+    const segment=remaining.slice(0,maxLen);
+    let splitAt=-1;
+    for(let i=segment.length-1;i>=0;i--){
+      if('.!?\n'.includes(segment[i])){splitAt=i+1;break;}
+    }
+    if(splitAt<=0){
+      for(let i=segment.length-1;i>=0;i--){
+        if(',;:'.includes(segment[i])){splitAt=i+1;break;}
+      }
+    }
+    if(splitAt<=0){splitAt=segment.lastIndexOf(' ');if(splitAt<=0)splitAt=maxLen;}
+    chunks.push(remaining.slice(0,splitAt).trim());
+    remaining=remaining.slice(splitAt).trim();
+  }
+  return chunks.filter(Boolean);
+}
+
 async function recordAudio(){
   if(!files.tts){setStatus('tts','⚠️ בחר קובץ PDF תחילה','error');return}
+  const btn=document.getElementById('btn-tts-record');
+  btn.disabled=true;
   setStatus('tts','מחלץ טקסט...','info');setProgress('tts',5);
   try{
     ttsText=await extractText(
@@ -1138,7 +1162,7 @@ async function recordAudio(){
       document.getElementById('tts-custom').value,
       (j,total,pn)=>{
         setStatus('tts',total>1?`מחלץ טקסט... עמוד ${pn} (${j+1}/${total})`:'מחלץ טקסט...','info');
-        setProgress('tts',5+Math.round((j/total)*25));
+        setProgress('tts',5+Math.round((j/total)*20));
       }
     );
     const preview=document.getElementById('tts-text-preview');
@@ -1146,29 +1170,46 @@ async function recordAudio(){
     document.getElementById('tts-text-card').style.display='block';
     const words=ttsText.trim().split(/\s+/).length;
     document.getElementById('tts-word-count').textContent=words.toLocaleString()+' מילים';
+
     const lang=document.getElementById('tts-lang').value;
-    setStatus('tts','ממיר לMP3...','info');setProgress('tts',35);
-    const resp=await fetch(TTS_WORKER,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({text:ttsText,lang})
-    });
-    if(!resp.ok){
-      const err=await resp.json().catch(()=>({error:'שגיאה לא ידועה'}));
-      throw new Error(err.error||'שגיאת שרת');
+    const chunks=splitTextToChunks(ttsText);
+    const buffers=[];
+
+    for(let i=0;i<chunks.length;i++){
+      setStatus('tts',`ממיר לMP3... ${i+1}/${chunks.length} חלקים`,'info');
+      setProgress('tts',30+Math.round((i/chunks.length)*60));
+      const resp=await fetch(TTS_WORKER,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:chunks[i],lang})
+      });
+      if(!resp.ok){
+        const err=await resp.json().catch(()=>({error:'שגיאה לא ידועה'}));
+        throw new Error(err.error||'שגיאת שרת');
+      }
+      buffers.push(await resp.arrayBuffer());
+      if(i<chunks.length-1) await new Promise(r=>setTimeout(r,150));
     }
-    setProgress('tts',85);
-    const blob=await resp.blob();
+
+    // Merge all chunks into one MP3
+    const totalLen=buffers.reduce((s,b)=>s+b.byteLength,0);
+    const merged=new Uint8Array(totalLen);
+    let offset=0;
+    for(const b of buffers){merged.set(new Uint8Array(b),offset);offset+=b.byteLength;}
+
+    const blob=new Blob([merged],{type:'audio/mpeg'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;a.download='audio.mp3';a.click();
     setTimeout(()=>URL.revokeObjectURL(url),2000);
     setProgress('tts',100);
     setStatus('tts','✓ קובץ MP3 הורד בהצלחה!','success');
-  }catch(e){setStatus('tts','שגיאה: '+e.message,'error')}
+  }catch(e){
+    setStatus('tts','שגיאה: '+e.message,'error');
+  }finally{
+    btn.disabled=false;
+  }
 }
-
-function stopRecording(){}
 
 function downloadTTSText(){
   if(!ttsText){setStatus('tts','אין טקסט — חלץ קובץ תחילה','error');return}
