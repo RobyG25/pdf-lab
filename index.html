@@ -6,6 +6,7 @@
 <title>מעבדת PDF</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap');
 
@@ -674,7 +675,29 @@ document.getElementById('trans-pages').addEventListener('change',function(){
   document.getElementById('trans-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-async function extractText(file, pageMode, customPages){
+let tesseractWorker=null;
+async function getTesseractWorker(lang='heb'){
+  if(tesseractWorker) return tesseractWorker;
+  tesseractWorker=await Tesseract.createWorker(lang);
+  return tesseractWorker;
+}
+
+async function extractPageText(pjsPage){
+  // First try native text extraction
+  const content=await pjsPage.getTextContent();
+  const native=content.items.map(i=>i.str).join(' ').trim();
+  if(native.length>20) return native;
+  // Fallback: render to canvas and OCR
+  const vp=pjsPage.getViewport({scale:2.0});
+  const canvas=document.createElement('canvas');
+  canvas.width=vp.width; canvas.height=vp.height;
+  await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+  const worker=await getTesseractWorker('heb');
+  const {data:{text}}=await worker.recognize(canvas);
+  return text.trim();
+}
+
+async function extractText(file, pageMode, customPages, onProgress){
   const ab=await readFileAsArrayBuffer(file);
   const pdf=await pdfjsLib.getDocument({data:ab}).promise;
   const total=pdf.numPages;
@@ -683,11 +706,12 @@ async function extractText(file, pageMode, customPages){
   else if(pageMode==='first') idxs=[1];
   else idxs=parsePages(customPages,total).map(i=>i+1);
   let text='';
-  for(const pn of idxs){
+  for(let j=0;j<idxs.length;j++){
+    const pn=idxs[j];
+    if(onProgress) onProgress(j,idxs.length,pn);
     const page=await pdf.getPage(pn);
-    const content=await page.getTextContent();
-    text+='\n\n--- עמוד '+pn+' ---\n';
-    text+=content.items.map(i=>i.str).join(' ');
+    const pageText=await extractPageText(page);
+    text+='\n\n--- עמוד '+pn+' ---\n'+pageText;
   }
   return text;
 }
@@ -707,7 +731,11 @@ async function doTranslate(){
     const rawText=await extractText(
       files.translate,
       document.getElementById('trans-pages').value,
-      document.getElementById('trans-custom').value
+      document.getElementById('trans-custom').value,
+      (j,total,pn)=>{
+        setStatus('translate',total>1?`מחלץ טקסט... עמוד ${pn} (${j+1}/${total})`:'מחלץ טקסט...','info');
+        setProgress('translate',5+Math.round((j/total)*20));
+      }
     );
     const srcLang=document.getElementById('src-lang').value;
     // MyMemory limit: 500 chars per request — split into chunks
@@ -1108,7 +1136,11 @@ async function recordAudio(){
     ttsText=await extractText(
       files.tts,
       document.getElementById('tts-pages').value,
-      document.getElementById('tts-custom').value
+      document.getElementById('tts-custom').value,
+      (j,total,pn)=>{
+        setStatus('tts',total>1?`מחלץ טקסט... עמוד ${pn} (${j+1}/${total})`:'מחלץ טקסט...','info');
+        setProgress('tts',5+Math.round((j/total)*25));
+      }
     );
     const preview=document.getElementById('tts-text-preview');
     preview.textContent=ttsText;
