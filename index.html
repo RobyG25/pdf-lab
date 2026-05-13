@@ -1127,7 +1127,7 @@ document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-function splitTextToChunks(text, maxLen=950){
+function splitTextToChunks(text, maxLen=500){
   if(text.length<=maxLen) return [text.trim()].filter(Boolean);
   const chunks=[];
   let remaining=text;
