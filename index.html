@@ -528,8 +528,7 @@
       </div>
 
       <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-        <button class="btn btn-primary" id="btn-tts-record" onclick="recordAudio()">⏺ הקלט והורד קובץ אודיו</button>
-        <button class="btn btn-danger" id="btn-tts-stop" onclick="stopRecording()" style="display:none">⏹ עצור הקלטה</button>
+        <button class="btn btn-primary" id="btn-tts-record" onclick="recordAudio()">⬇ צור והורד MP3</button>
         <button class="btn btn-outline" onclick="downloadTTSText()">💾 שמור טקסט</button>
       </div>
       <div class="status" id="status-tts"></div>
@@ -1122,16 +1121,16 @@ async function downloadCropped(){
   document.getElementById('crop-dl-btn').disabled=false;
 }
 
-// ===== TTS — Tab Audio Capture → WebM =====
+// ===== TTS — Cloudflare Worker → MP3 =====
+const TTS_WORKER='https://sparkling-water-87c9.roby-glodan.workers.dev';
+
 document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-let mediaRecorder=null, recordedChunks=[];
-
 async function recordAudio(){
   if(!files.tts){setStatus('tts','⚠️ בחר קובץ PDF תחילה','error');return}
-  setStatus('tts','מחלץ טקסט...','info');setProgress('tts',10);
+  setStatus('tts','מחלץ טקסט...','info');setProgress('tts',5);
   try{
     ttsText=await extractText(
       files.tts,
@@ -1147,100 +1146,30 @@ async function recordAudio(){
     document.getElementById('tts-text-card').style.display='block';
     const words=ttsText.trim().split(/\s+/).length;
     document.getElementById('tts-word-count').textContent=words.toLocaleString()+' מילים';
-    setProgress('tts',30);
-
-    // Capture tab audio (Chrome: shows "share tab" dialog with audio checkbox)
-    setStatus('tts','בחר את הטאב הזה ✓ שתף אודיו של הטאב, לחץ שתף','info');
-    let stream;
-    try{
-      stream=await navigator.mediaDevices.getDisplayMedia({
-        video:{displaySurface:'browser'},
-        audio:{suppressLocalAudioPlayback:false},
-        preferCurrentTab:true
-      });
-    }catch(err){
-      // User cancelled or not supported — fall back to speech-only (no file)
-      setStatus('tts','ביטלת את השיתוף — מקריא בלבד (ללא הורדה)','info');
-      speakOnly();
-      return;
-    }
-
-    // Check if audio track exists
-    const audioTracks=stream.getAudioTracks();
-    if(audioTracks.length===0){
-      stream.getTracks().forEach(t=>t.stop());
-      setStatus('tts','⚠️ לא נבחר אודיו — סמן "שתף אודיו של הטאב" בדיאלוג','error');
-      return;
-    }
-
-    // Use only the audio track
-    const audioStream=new MediaStream(audioTracks);
-    // Stop video track immediately (we don't need it)
-    stream.getVideoTracks().forEach(t=>t.stop());
-
-    const mimeType=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ?'audio/webm;codecs=opus':'audio/webm';
-    recordedChunks=[];
-    mediaRecorder=new MediaRecorder(audioStream,{mimeType});
-    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)recordedChunks.push(e.data)};
-    mediaRecorder.onstop=()=>{
-      audioStream.getTracks().forEach(t=>t.stop());
-      const blob=new Blob(recordedChunks,{type:mimeType});
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');
-      a.href=url;a.download='audio.webm';a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),2000);
-      setStatus('tts','✓ קובץ אודיו הורד! (webm — נפתח בכל נגן)','success');
-      setProgress('tts',100);
-      document.getElementById('btn-tts-record').style.display='inline-flex';
-      document.getElementById('btn-tts-stop').style.display='none';
-    };
-
-    mediaRecorder.start(100);
-    document.getElementById('btn-tts-record').style.display='none';
-    document.getElementById('btn-tts-stop').style.display='inline-flex';
-    setStatus('tts','🔴 מקליט ומקריא — המתן לסיום אוטומטי...','info');
-    setProgress('tts',60);
-
-    // Speak
-    speechSynthesis.cancel();
     const lang=document.getElementById('tts-lang').value;
-    ttsUtterance=new SpeechSynthesisUtterance(ttsText);
-    ttsUtterance.lang=lang==='he'?'he-IL':lang==='ar'?'ar-SA':lang==='ru'?'ru-RU':lang==='fr'?'fr-FR':'en-US';
-    const voices=speechSynthesis.getVoices();
-    const match=voices.find(v=>v.lang.startsWith(lang));
-    if(match)ttsUtterance.voice=match;
-    ttsUtterance.rate=1;ttsUtterance.pitch=1;
-    ttsUtterance.onend=()=>{
-      setTimeout(()=>{if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();},600);
-    };
-    ttsUtterance.onerror=e=>{
-      setStatus('tts','שגיאה: '+e.error,'error');
-      if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();
-    };
-    speechSynthesis.speak(ttsUtterance);
-
+    setStatus('tts','ממיר לMP3...','info');setProgress('tts',35);
+    const resp=await fetch(TTS_WORKER,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:ttsText,lang})
+    });
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({error:'שגיאה לא ידועה'}));
+      throw new Error(err.error||'שגיאת שרת');
+    }
+    setProgress('tts',85);
+    const blob=await resp.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='audio.mp3';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    setProgress('tts',100);
+    setStatus('tts','✓ קובץ MP3 הורד בהצלחה!','success');
   }catch(e){setStatus('tts','שגיאה: '+e.message,'error')}
 }
 
-function speakOnly(){
-  speechSynthesis.cancel();
-  const lang=document.getElementById('tts-lang').value;
-  const utt=new SpeechSynthesisUtterance(ttsText);
-  utt.lang=lang==='he'?'he-IL':'en-US';
-  const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith(lang));
-  if(v)utt.voice=v;
-  utt.onend=()=>setStatus('tts','✓ הסתיים','success');
-  speechSynthesis.speak(utt);
-  setStatus('tts','🔊 מקריא בלבד...','info');
-}
+function stopRecording(){}
 
-function stopRecording(){
-  speechSynthesis.cancel();
-  if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();
-  document.getElementById('btn-tts-record').style.display='inline-flex';
-  document.getElementById('btn-tts-stop').style.display='none';
-}
 function downloadTTSText(){
   if(!ttsText){setStatus('tts','אין טקסט — חלץ קובץ תחילה','error');return}
   const blob=new Blob([ttsText],{type:'text/plain;charset=utf-8'});
