@@ -331,8 +331,9 @@
         </div>
       </div>
 
-      <div style="margin-top:1.5rem">
+      <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="doRotate()">⚡ סובב ויצור קובץ חדש</button>
+        <button class="btn btn-outline" onclick="resetPanel('rotate')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-rotate"></div>
       <div class="progress-bar" id="prog-rotate"><div class="progress-fill" id="progf-rotate"></div></div>
@@ -390,6 +391,7 @@
         <button class="btn btn-primary" onclick="doTranslate()">🌐 תרגם</button>
         <button class="btn btn-outline" onclick="copyTranslation()">📋 העתק תרגום</button>
         <button class="btn btn-outline" onclick="downloadTranslation()">💾 שמור כקובץ טקסט</button>
+        <button class="btn btn-outline" onclick="resetPanel('translate')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-translate"></div>
       <div class="progress-bar" id="prog-translate"><div class="progress-fill" id="progf-translate"></div></div>
@@ -435,8 +437,9 @@
           </select>
         </div>
       </div>
-      <div style="margin-top:1.5rem">
+      <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="doSplit()">📰 פצל לעמודות נפרדות</button>
+        <button class="btn btn-outline" onclick="resetPanel('split')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-split"></div>
       <div class="progress-bar" id="prog-split"><div class="progress-fill" id="progf-split"></div></div>
@@ -530,6 +533,7 @@
       <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
         <button class="btn btn-primary" id="btn-tts-record" onclick="recordAudio()">⬇ צור והורד MP3</button>
         <button class="btn btn-outline" onclick="downloadTTSText()">💾 שמור טקסט</button>
+        <button class="btn btn-outline" onclick="resetPanel('tts')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-tts"></div>
       <div class="progress-bar" id="prog-tts"><div class="progress-fill" id="progf-tts"></div></div>
@@ -552,7 +556,33 @@ let transText = '';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ===== TABS =====
+// ===== RESET PANELS =====
+function resetPanel(type){
+  files[type]=null;
+  const fn=document.getElementById('fn-'+type);
+  if(fn){fn.textContent='';fn.classList.remove('show');}
+  // reset file input
+  const inputs=document.querySelectorAll('#drop-'+type+' input[type=file]');
+  inputs.forEach(i=>i.value='');
+  // hide status + progress
+  const st=document.getElementById('status-'+type);
+  if(st) st.classList.remove('show');
+  const pb=document.getElementById('prog-'+type);
+  if(pb) pb.classList.remove('show');
+  // type-specific resets
+  if(type==='translate'){
+    transText='';
+    document.getElementById('trans-result-card').style.display='none';
+    document.getElementById('trans-result').textContent='';
+  }
+  if(type==='tts'){
+    ttsText='';
+    document.getElementById('tts-text-card').style.display='none';
+    document.getElementById('tts-text-preview').textContent='';
+    document.getElementById('tts-word-count').textContent='';
+    if(tesseractWorker){tesseractWorker.terminate();tesseractWorker=null;}
+  }
+}
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click',function(e){
     e.stopPropagation();
