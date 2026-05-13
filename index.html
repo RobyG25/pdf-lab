@@ -1127,7 +1127,17 @@ document.getElementById('tts-pages').addEventListener('change',function(){
   document.getElementById('tts-custom-wrap').style.display=this.value==='custom'?'block':'none';
 });
 
-function splitTextToChunks(text, maxLen=500){
+function cleanTextForTTS(text){
+  return text
+    .replace(/\|\|/g,' ')
+    .replace(/\|/g,' ')
+    .replace(/--- עמוד \d+ ---/g,'')
+    .replace(/[ \t]{2,}/g,' ')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+
+function splitTextToChunks(text, maxLen=950){
   if(text.length<=maxLen) return [text.trim()].filter(Boolean);
   const chunks=[];
   let remaining=text;
@@ -1172,7 +1182,7 @@ async function recordAudio(){
     document.getElementById('tts-word-count').textContent=words.toLocaleString()+' מילים';
 
     const lang=document.getElementById('tts-lang').value;
-    const chunks=splitTextToChunks(ttsText);
+    const chunks=splitTextToChunks(cleanTextForTTS(ttsText));
     const buffers=[];
 
     for(let i=0;i<chunks.length;i++){
