@@ -710,12 +710,13 @@ async function getTesseractWorker(lang='heb'){
   return tesseractWorker;
 }
 
-async function extractPageText(pjsPage){
+async function extractPageText(pjsPage, onOCR){
   // First try native text extraction
   const content=await pjsPage.getTextContent();
   const native=content.items.map(i=>i.str).join(' ').trim();
   if(native.length>20) return native;
   // Fallback: render to canvas and OCR
+  if(onOCR) onOCR();
   const vp=pjsPage.getViewport({scale:2.0});
   const canvas=document.createElement('canvas');
   canvas.width=vp.width; canvas.height=vp.height;
@@ -734,11 +735,15 @@ async function extractText(file, pageMode, customPages, onProgress){
   else if(pageMode==='first') idxs=[1];
   else idxs=parsePages(customPages,total).map(i=>i+1);
   let text='';
+  let usingOCR=false;
   for(let j=0;j<idxs.length;j++){
     const pn=idxs[j];
-    if(onProgress) onProgress(j,idxs.length,pn);
+    if(onProgress) onProgress(j,idxs.length,pn,usingOCR);
     const page=await pdf.getPage(pn);
-    const pageText=await extractPageText(page);
+    const pageText=await extractPageText(page,()=>{
+      usingOCR=true;
+      if(onProgress) onProgress(j,idxs.length,pn,true);
+    });
     text+='\n\n--- עמוד '+pn+' ---\n'+pageText;
   }
   return text;
