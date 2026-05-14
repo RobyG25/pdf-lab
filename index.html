@@ -26,6 +26,19 @@
     --radius:12px;
   }
 
+  body.light{
+    --bg:#f5f6fa;
+    --surface:#ffffff;
+    --surface2:#eef0f6;
+    --border:#d0d4e4;
+    --accent:#4455dd;
+    --accent2:#0aaa9a;
+    --accent3:#e03030;
+    --text:#1a1a2e;
+    --text2:#5a5a7a;
+    --success:#0aaa9a;
+  }
+
   body{
     background:var(--bg);
     color:var(--text);
@@ -200,6 +213,8 @@
   .status.info{background:rgba(124,111,247,0.1);border:1px solid rgba(124,111,247,0.3);color:var(--accent)}
   .status.success{background:rgba(78,205,196,0.1);border:1px solid rgba(78,205,196,0.3);color:var(--accent2)}
   .status.error{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);color:var(--accent3)}
+  @keyframes successPop{0%{transform:scale(0.97);opacity:0.7}100%{transform:scale(1);opacity:1}}
+  .status.success{animation:successPop 0.25s ease}
 
   /* PROGRESS */
   .progress-bar{
@@ -282,10 +297,18 @@
 <body>
 
 <div class="header">
-  <div>
+  <div style="flex:1">
     <div class="logo">PDF<span>.lab</span></div>
     <div class="header-sub">מעבדת PDF — כל הכלים במקום אחד</div>
   </div>
+  <button onclick="toggleTheme()" id="theme-btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:0.85rem;transition:all 0.2s" title="החלף מצב תצוגה">
+    🌙 Dark
+  </button>
+</div>
+
+<div style="background:rgba(78,205,196,0.08);border-bottom:1px solid rgba(78,205,196,0.15);padding:0.6rem 2rem;display:flex;align-items:center;justify-content:center;gap:0.6rem;font-size:0.82rem;color:var(--accent2)">
+  <span>🔒</span>
+  <span>הקבצים שלך <strong>לא עוזבים את המחשב</strong> — כל העיבוד מתבצע מקומית בדפדפן בלבד. אנחנו לא רואים, לא שומרים ולא שולחים שום מסמך.</span>
 </div>
 
 <div class="tabs">
@@ -569,6 +592,22 @@ let transText = '';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// ===== THEME TOGGLE =====
+function toggleTheme(){
+  const isLight=document.body.classList.toggle('light');
+  const btn=document.getElementById('theme-btn');
+  btn.textContent=isLight?'🌙 Dark':'☀️ Light';
+  localStorage.setItem('pdflab-theme',isLight?'light':'dark');
+}
+// Load saved theme
+(function(){
+  const saved=localStorage.getItem('pdflab-theme');
+  if(saved==='light'){
+    document.body.classList.add('light');
+    document.getElementById('theme-btn').textContent='🌙 Dark';
+  }
+})();
+
 // ===== RESET PANELS =====
 function resetPanel(type){
   files[type]=null;
@@ -638,6 +677,15 @@ function handleFile(type, input){
 function setStatus(id, msg, type='info'){
   const el=document.getElementById('status-'+id);
   el.textContent=msg; el.className='status show '+type;
+  // disable action buttons while processing, re-enable on done
+  const panel=document.getElementById('panel-'+id);
+  if(!panel) return;
+  const btns=panel.querySelectorAll('.btn-primary');
+  if(type==='info'){
+    btns.forEach(b=>{if(!b.id||!b.id.includes('tts-record'))b.disabled=true});
+  } else {
+    btns.forEach(b=>b.disabled=false);
+  }
 }
 function hideStatus(id){document.getElementById('status-'+id).classList.remove('show')}
 function setProgress(id, pct){
@@ -707,7 +755,7 @@ async function doRotate(){
     const bytes=await pdf.save();
     setProgress('rotate',100);
     downloadBlob(bytes,'rotated_'+files.rotate.name);
-    setStatus('rotate','✓ הקובץ סובב בהצלחה ונשמר!','success');
+    setStatus('rotate','✅ הקובץ סובב ונשמר בהצלחה! בדוק את תיקיית ההורדות.','success');
   }catch(e){setStatus('rotate','שגיאה: '+e.message,'error')}
 }
 
@@ -812,7 +860,7 @@ async function doTranslate(){
     document.getElementById('trans-result').textContent=transText;
     document.getElementById('trans-result-card').style.display='block';
     setProgress('translate',100);
-    setStatus('translate','✓ התרגום הושלם! (MyMemory — חינם)','success');
+    setStatus('translate','✅ התרגום הושלם! ניתן להעתיק או לשמור כקובץ.','success');
   }catch(e){setStatus('translate','שגיאה: '+e.message,'error')}
 }
 
@@ -864,7 +912,7 @@ async function doSplit(){
     const bytes=await pdfOut.save();
     setProgress('split',100);
     downloadBlob(bytes,'split_'+files.split.name);
-    setStatus('split','✓ הקובץ פוצל! '+total+' עמודים → '+(total*2)+' עמודים','success');
+    setStatus('split','✅ הקובץ פוצל בהצלחה! '+total+' עמודים → '+(total*2)+' עמודים. בדוק את תיקיית ההורדות.','success');
   }catch(e){setStatus('split','שגיאה: '+e.message,'error')}
 }
 
@@ -1270,7 +1318,7 @@ async function recordAudio(){
     a.href=url;a.download='audio.mp3';a.click();
     setTimeout(()=>URL.revokeObjectURL(url),2000);
     setProgress('tts',100);
-    setStatus('tts','✓ קובץ MP3 הורד בהצלחה!','success');
+    setStatus('tts','✅ קובץ MP3 הורד בהצלחה! בדוק את תיקיית ההורדות.','success');
   }catch(e){
     setStatus('tts','שגיאה: '+e.message,'error');
   }finally{
