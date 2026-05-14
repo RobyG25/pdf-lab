@@ -323,6 +323,11 @@
 
   <!-- ===== ROTATE ===== -->
   <div class="panel active" id="panel-rotate">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> הקובץ שלך נראה על הצד או הפוך? הכלי הזה יסובב אותו ויצור קובץ חדש מתוקן — בלחיצה אחת.
+      </div>
+    </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> בחר קובץ PDF לסיבוב</div>
       <div class="dropzone" id="drop-rotate">
@@ -378,6 +383,11 @@
 
   <!-- ===== TRANSLATE ===== -->
   <div class="panel" id="panel-translate">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> יש לך מסמך באנגלית, רוסית, ערבית או שפה אחרת? הכלי הזה יחלץ את הטקסט ויתרגם אותו לעברית. עובד גם על קבצים סרוקים.
+      </div>
+    </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> קובץ PDF לתרגום</div>
       <div class="dropzone" id="drop-translate">
@@ -441,6 +451,11 @@
 
   <!-- ===== SPLIT ===== -->
   <div class="panel" id="panel-split">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> יש לך PDF של עיתון או ספר שמודפס בשתי עמודות על כל דף? הכלי יפצל כל דף לשני דפים נפרדים — קל יותר לקריאה.
+      </div>
+    </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> קובץ PDF בפורמט עיתון (2 עמודות)</div>
       <div class="dropzone" id="drop-split">
@@ -484,6 +499,11 @@
 
   <!-- ===== CROP ===== -->
   <div class="panel" id="panel-crop">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> יש לך PDF עם שוליים גדולים מדי, כותרות עליונות/תחתונות מיותרות, או חלק מהדף שאתה לא צריך? גרור מסגרת על האזור שאתה רוצה לשמור — והקובץ החדש יכיל רק אותו.
+      </div>
+    </div>
     <!-- Drop zone (shown before file loaded) -->
     <div id="crop-dropzone-wrap">
       <div class="card">
@@ -527,6 +547,11 @@
 
   <!-- ===== TTS ===== -->
   <div class="panel" id="panel-tts">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> רוצה להאזין למסמך במקום לקרוא? הכלי יחלץ את הטקסט ויצור קובץ MP3 שאפשר להאזין לו בכל נגן — בנסיעה, בהליכה, בכל מקום. עובד גם על קבצים סרוקים.
+      </div>
+    </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span> קובץ PDF לקריאה בקול <span class="badge">Google TTS → MP3</span></div>
       <div class="dropzone" id="drop-tts">
@@ -646,12 +671,34 @@ document.querySelectorAll('.tab').forEach(btn=>{
 });
 
 // ===== FILE HANDLING =====
+const MAX_FILE_MB=100;
+const friendlyErrors={
+  'password':'הקובץ מוגן בסיסמה — לא ניתן לעבד אותו.',
+  'Invalid PDF':'הקובץ לא תקין או שאינו PDF אמיתי. נסה קובץ אחר.',
+  'Failed to fetch':'בעיית חיבור לאינטרנט — בדוק את החיבור ונסה שוב.',
+  'NetworkError':'בעיית חיבור לאינטרנט — בדוק את החיבור ונסה שוב.',
+  'out of memory':'הקובץ גדול מדי לעיבוד בדפדפן — נסה קובץ קטן יותר.',
+  'QuotaExceededError':'הקובץ גדול מדי לעיבוד בדפדפן — נסה קובץ קטן יותר.',
+};
+function getFriendlyError(msg){
+  for(const [key,val] of Object.entries(friendlyErrors)){
+    if(msg.includes(key)) return val;
+  }
+  return 'משהו השתבש — נסה שוב או נסה קובץ אחר. ('+msg.slice(0,60)+')';
+}
+
 function handleFile(type, input){
   const f = input.files[0];
   if(!f) return;
+  const mb=f.size/1024/1024;
+  if(mb>MAX_FILE_MB){
+    alert(`הקובץ גדול מדי (${mb.toFixed(0)}MB).\nהמגבלה היא ${MAX_FILE_MB}MB.\nנסה לפצל את הקובץ לחלקים קטנים יותר.`);
+    input.value='';
+    return;
+  }
   files[type] = f;
   const el = document.getElementById('fn-'+type);
-  el.textContent = '✓ '+f.name+' ('+Math.round(f.size/1024)+' KB)';
+  el.textContent = '✓ '+f.name+' ('+Math.round(mb*10)/10+' MB)';
   el.classList.add('show');
 }
 
@@ -756,7 +803,7 @@ async function doRotate(){
     setProgress('rotate',100);
     downloadBlob(bytes,'rotated_'+files.rotate.name);
     setStatus('rotate','✅ הקובץ סובב ונשמר בהצלחה! בדוק את תיקיית ההורדות.','success');
-  }catch(e){setStatus('rotate','שגיאה: '+e.message,'error')}
+  }catch(e){setStatus('rotate',getFriendlyError(e.message),'error')}
 }
 
 // ===== TRANSLATE =====
@@ -861,7 +908,7 @@ async function doTranslate(){
     document.getElementById('trans-result-card').style.display='block';
     setProgress('translate',100);
     setStatus('translate','✅ התרגום הושלם! ניתן להעתיק או לשמור כקובץ.','success');
-  }catch(e){setStatus('translate','שגיאה: '+e.message,'error')}
+  }catch(e){setStatus('translate',getFriendlyError(e.message),'error')}
 }
 
 function copyTranslation(){
@@ -913,7 +960,7 @@ async function doSplit(){
     setProgress('split',100);
     downloadBlob(bytes,'split_'+files.split.name);
     setStatus('split','✅ הקובץ פוצל בהצלחה! '+total+' עמודים → '+(total*2)+' עמודים. בדוק את תיקיית ההורדות.','success');
-  }catch(e){setStatus('split','שגיאה: '+e.message,'error')}
+  }catch(e){setStatus('split',getFriendlyError(e.message),'error')}
 }
 
 // ===== CROP =====
@@ -1320,7 +1367,7 @@ async function recordAudio(){
     setProgress('tts',100);
     setStatus('tts','✅ קובץ MP3 הורד בהצלחה! בדוק את תיקיית ההורדות.','success');
   }catch(e){
-    setStatus('tts','שגיאה: '+e.message,'error');
+    setStatus('tts',getFriendlyError(e.message),'error');
   }finally{
     btn.disabled=false;
   }
