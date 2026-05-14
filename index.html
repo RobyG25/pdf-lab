@@ -3,9 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
 <title>מעבדת PDF</title>
-<meta name="description" content="מעבדת PDF — כלים חינמיים לעיבוד PDF בדפדפן">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -260,11 +258,24 @@
   }
 
   @media(max-width:600px){
-    .main{padding:1rem}
-    .tabs{padding:0 1rem}
+    .main{padding:0.75rem}
+    .tabs{padding:0 0.5rem}
+    .tab{padding:0.75rem 0.9rem;font-size:0.8rem}
+    .tab-icon{font-size:0.95rem}
     .rot-grid{grid-template-columns:repeat(2,1fr)}
     .crop-grid{grid-template-columns:1fr}
     .header{padding:1rem}
+    .card{padding:1rem}
+    .btn{padding:0.6rem 1rem;font-size:0.85rem}
+    .controls{gap:0.75rem}
+    .control-group{min-width:100%}
+    /* Crop mobile */
+    #crop-pages-grid{grid-template-columns:1fr !important}
+    #crop-pages-grid canvas{max-width:100% !important;height:auto !important;touch-action:none}
+    #crop-pages-grid .page-card{margin-bottom:0}
+    /* Dropzone mobile */
+    .dropzone{padding:2rem 1rem}
+    .drop-icon{font-size:2rem}
   }
 </style>
 </head>
@@ -767,8 +778,12 @@ async function doTranslate(){
       files.translate,
       document.getElementById('trans-pages').value,
       document.getElementById('trans-custom').value,
-      (j,total,pn)=>{
-        setStatus('translate',total>1?`מחלץ טקסט... עמוד ${pn} (${j+1}/${total})`:'מחלץ טקסט...','info');
+      (j,total,pn,isOCR)=>{
+        const base=total>1?`עמוד ${pn} (${j+1}/${total})`:'';
+        const msg=isOCR
+          ?`🔍 OCR — סורק תמונה... ${base} (לוקח כמה שניות לעמוד)`
+          :`מחלץ טקסט... ${base}`;
+        setStatus('translate',msg,'info');
         setProgress('translate',5+Math.round((j/total)*20));
       }
     );
@@ -929,6 +944,7 @@ async function renderCropPage(i,plibDoc){
   canvas.style.height=vp.height+'px';
   canvas.style.display='block';
   canvas.style.maxWidth='100%';
+  canvas.style.touchAction='none';
   await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
   const wrap=document.getElementById(`cropwrap-${i}`);
   wrap.innerHTML='';
@@ -1207,8 +1223,12 @@ async function recordAudio(){
       files.tts,
       document.getElementById('tts-pages').value,
       document.getElementById('tts-custom').value,
-      (j,total,pn)=>{
-        setStatus('tts',total>1?`מחלץ טקסט... עמוד ${pn} (${j+1}/${total})`:'מחלץ טקסט...','info');
+      (j,total,pn,isOCR)=>{
+        const base=total>1?`עמוד ${pn} (${j+1}/${total})`:'';
+        const msg=isOCR
+          ?`🔍 OCR — סורק תמונה... ${base} (לוקח כמה שניות לעמוד)`
+          :`מחלץ טקסט... ${base}`;
+        setStatus('tts',msg,'info');
         setProgress('tts',5+Math.round((j/total)*20));
       }
     );
