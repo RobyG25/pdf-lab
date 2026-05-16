@@ -402,7 +402,7 @@
     <div class="card">
       <div class="card-title"><span class="dot"></span> הגדרות תרגום</div>
       <div style="background:rgba(78,205,196,0.08);border:1px solid rgba(78,205,196,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.82rem;color:var(--accent2)">
-        ✓ מופעל על ידי MyMemory — חינמי לחלוטין, ללא הרשמה, ללא API
+        ✓ מופעל על ידי Google Translate — חינמי לחלוטין, ללא הרשמה, ללא מגבלה
       </div>
       <div class="controls">
         <div class="control-group">
@@ -435,8 +435,10 @@
       </div>
       <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="doTranslate()">🌐 תרגם</button>
-        <button class="btn btn-outline" onclick="copyTranslation()">📋 העתק תרגום</button>
-        <button class="btn btn-outline" onclick="downloadTranslation()">💾 שמור כקובץ טקסט</button>
+        <button class="btn btn-outline" onclick="copyTranslation()">📋 העתק</button>
+        <button class="btn btn-outline" onclick="downloadTranslation()">💾 שמור TXT</button>
+        <button class="btn btn-outline" onclick="downloadTranslationDocx()">📝 שמור Word</button>
+        <button class="btn btn-outline" onclick="downloadTranslationPdf()">📄 שמור PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('translate')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-translate"></div>
@@ -904,7 +906,7 @@ async function doTranslate(){
     // אזהרה אם הטקסט ארוך מאוד
     const totalChars=rawText.length;
     if(totalChars>40000){
-      setStatus('translate',`⚠️ הטקסט ארוך (${Math.round(totalChars/1000)}K תווים) — MyMemory מוגבל ל-50K ביום. מתרגם...`,'info');
+      setStatus('translate',`⚠️ הטקסט ארוך (${Math.round(totalChars/1000)}K תווים) — מתרגם בחלקים, אנא המתן...`,'info');
     } else {
       setStatus('translate',`מתרגם... 0/${chunks.length} חלקים`,'info');
     }
@@ -951,6 +953,69 @@ function downloadTranslation(){
   const a=document.createElement('a');
   a.href=url;a.download='translation.txt';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function downloadTranslationDocx(){
+  if(!transText){setStatus('translate','אין תרגום לשמירה','error');return}
+  // Build minimal valid DOCX (Office Open XML) with RTL Hebrew support
+  const escaped=transText
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .split('\n').map(line=>
+      `<w:p><w:pPr><w:bidi/><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rtl/><w:lang w:bidi="he-IL"/></w:rPr><w:t xml:space="preserve">${line||' '}</w:t></w:r></w:p>`
+    ).join('');
+  const docxml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:sectPr><w:bidi/></w:sectPr>
+${escaped}
+</w:body></w:document>`;
+  const relsxml=`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+  const wordRelsxml=`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`;
+  const contentTypes=`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+  // Use JSZip-like approach — manual ZIP via Blob
+  // Since we can't use JSZip easily, create an HTML file styled like Word
+  const html=`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:14pt;line-height:1.8;direction:rtl;text-align:right;margin:2.5cm;color:#000}
+  p{margin:0 0 0.5em 0}
+</style></head>
+<body>${transText.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('')}</body></html>`;
+  const blob=new Blob([html],{type:'application/msword;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='translation.doc';a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function downloadTranslationPdf(){
+  if(!transText){setStatus('translate','אין תרגום לשמירה','error');return}
+  // Open print dialog — user can save as PDF
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;font-size:13pt;line-height:1.8;direction:rtl;text-align:right;margin:2cm;color:#000}
+  p{margin:0 0 0.5em 0}
+  @media print{body{margin:1.5cm}}
+</style></head>
+<body>
+${transText.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('')}
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`);
+  win.document.close();
 }
 
 // ===== SPLIT =====
