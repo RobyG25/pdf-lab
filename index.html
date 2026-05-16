@@ -858,11 +858,14 @@ async function extractText(file, pageMode, customPages, onProgress){
 }
 
 async function translateChunk(text, srcLang){
-  const url=`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${srcLang}|he`;
-  const resp=await fetch(url);
+  const resp=await fetch(TTS_WORKER+'/translate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text,from:srcLang,to:'he'})
+  });
   const data=await resp.json();
-  if(data.responseStatus!==200) throw new Error('שגיאת תרגום: '+data.responseDetails);
-  return data.responseData.translatedText;
+  if(data.error) throw new Error('שגיאת תרגום: '+data.error);
+  return data.translated;
 }
 
 async function doTranslate(){
@@ -882,8 +885,13 @@ async function doTranslate(){
         setProgress('translate',5+Math.round((j/total)*20));
       }
     );
+
+    // הצג את אזור התוצאה מיד — לפני שמתחילים לתרגם
+    document.getElementById('trans-result-card').style.display='block';
+    document.getElementById('trans-result').textContent='';
+    transText='';
+
     const srcLang=document.getElementById('src-lang').value;
-    // MyMemory limit: 500 chars per request — split into chunks
     const CHUNK=480;
     const sentences=rawText.match(/[^.!?\n]{1,480}[.!?\n]?/g)||[rawText];
     let chunks=[],cur='';
@@ -892,20 +900,40 @@ async function doTranslate(){
       else cur+=s;
     }
     if(cur) chunks.push(cur);
-    setStatus('translate',`מתרגם... 0/${chunks.length} חלקים`,'info');
-    let translated='';
+
+    // אזהרה אם הטקסט ארוך מאוד
+    const totalChars=rawText.length;
+    if(totalChars>40000){
+      setStatus('translate',`⚠️ הטקסט ארוך (${Math.round(totalChars/1000)}K תווים) — MyMemory מוגבל ל-50K ביום. מתרגם...`,'info');
+    } else {
+      setStatus('translate',`מתרגם... 0/${chunks.length} חלקים`,'info');
+    }
+
     for(let i=0;i<chunks.length;i++){
-      const t=await translateChunk(chunks[i].trim(),srcLang);
-      translated+=t+' ';
-      const pct=10+Math.round((i+1)/chunks.length*85);
+      let t;
+      try{
+        t=await translateChunk(chunks[i].trim(),srcLang);
+      }catch(err){
+        // נכשל באמצע — שמור מה שיש ועצור
+        const partial=transText.trim();
+        if(partial){
+          document.getElementById('trans-result').textContent=partial+'\n\n[התרגום נעצר באמצע — '+getFriendlyError(err.message)+']';
+          setStatus('translate',`⚠️ התרגום נעצר אחרי ${i}/${chunks.length} חלקים — מה שתורגם נשמר למטה. אפשר להעתיק או לשמור.`,'error');
+        } else {
+          setStatus('translate',getFriendlyError(err.message),'error');
+        }
+        return;
+      }
+      transText+=t+' ';
+      // עדכן בזמן אמת
+      document.getElementById('trans-result').textContent=transText.trim();
+      const pct=25+Math.round((i+1)/chunks.length*72);
       setProgress('translate',pct);
       setStatus('translate',`מתרגם... ${i+1}/${chunks.length} חלקים`,'info');
-      // rate limit: small delay between requests
       if(i<chunks.length-1) await new Promise(r=>setTimeout(r,300));
     }
-    transText=translated.trim();
-    document.getElementById('trans-result').textContent=transText;
-    document.getElementById('trans-result-card').style.display='block';
+
+    transText=transText.trim();
     setProgress('translate',100);
     setStatus('translate','✅ התרגום הושלם! ניתן להעתיק או לשמור כקובץ.','success');
   }catch(e){setStatus('translate',getFriendlyError(e.message),'error')}
@@ -1340,7 +1368,7 @@ async function recordAudio(){
     for(let i=0;i<chunks.length;i++){
       setStatus('tts',`ממיר לMP3... ${i+1}/${chunks.length} חלקים`,'info');
       setProgress('tts',30+Math.round((i/chunks.length)*60));
-      const resp=await fetch(TTS_WORKER,{
+      const resp=await fetch(TTS_WORKER+'/tts',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({text:chunks[i],lang})
