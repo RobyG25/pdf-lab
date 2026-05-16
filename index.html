@@ -579,8 +579,15 @@
           </select>
         </div>
         <div class="control-group">
-          <label>עמודים</label>
-          <select id="tts-pages">
+          <label>מהירות קריאה</label>
+          <select id="tts-speed">
+            <option value="-5">איטי מאוד</option>
+            <option value="-2">איטי</option>
+            <option value="0" selected>רגיל</option>
+            <option value="3">מהיר</option>
+            <option value="6">מהיר מאוד</option>
+          </select>
+        </div>
             <option value="all">כל העמודים</option>
             <option value="custom">עמודים מסוימים</option>
           </select>
@@ -1436,7 +1443,7 @@ async function recordAudio(){
       const resp=await fetch(TTS_WORKER+'/tts',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text:chunks[i],lang})
+        body:JSON.stringify({text:chunks[i],lang,speed:document.getElementById('tts-speed').value})
       });
       if(!resp.ok){
         const err=await resp.json().catch(()=>({error:'שגיאה לא ידועה'}));
