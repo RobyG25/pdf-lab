@@ -437,8 +437,8 @@
         <button class="btn btn-primary" onclick="doTranslate()">🌐 תרגם</button>
         <button class="btn btn-outline" onclick="copyTranslation()">📋 העתק</button>
         <button class="btn btn-outline" onclick="downloadTranslation()">💾 שמור TXT</button>
-        <button class="btn btn-outline" onclick="downloadTranslationDocx()">📝 שמור Word</button>
-        <button class="btn btn-outline" onclick="downloadTranslationPdf()">📄 שמור PDF</button>
+        <button class="btn btn-outline" onclick="downloadTranslationDocx()">📝 שמור כ-Word</button>
+        <button class="btn btn-outline" onclick="downloadTranslationPdf()">🖨️ הדפס / שמור כ-PDF</button>
         <button class="btn btn-outline" onclick="resetPanel('translate')">🔄 קובץ חדש</button>
       </div>
       <div class="status" id="status-translate"></div>
@@ -514,7 +514,7 @@
           <input type="file" accept=".pdf" id="crop-file-input" onchange="loadCropFile(this.files[0])">
           <span class="drop-icon">✂️</span>
           <div class="drop-text">גרור PDF לכאן או לחץ לבחירה</div>
-          <div class="drop-sub">סמן את אזור החיתוך ישירות על הקובץ — HARDCODED בקובץ החדש</div>
+          <div class="drop-sub">סמן את אזור החיתוך ישירות על הקובץ — השינוי ייכתב לקובץ החדש</div>
         </div>
       </div>
     </div>
@@ -588,6 +588,9 @@
             <option value="6">מהיר מאוד</option>
           </select>
         </div>
+        <div class="control-group">
+          <label>עמודים לקריאה</label>
+          <select id="tts-pages">
             <option value="all">כל העמודים</option>
             <option value="custom">עמודים מסוימים</option>
           </select>
@@ -711,8 +714,8 @@ function handleFile(type, input){
   el.classList.add('show');
 }
 
-// drag-drop
-['rotate','translate','split','crop','tts'].forEach(t=>{
+// drag-drop (לא כולל crop — יש לו מנגנון נפרד)
+['rotate','translate','split','tts'].forEach(t=>{
   const dz = document.getElementById('drop-'+t);
   if(!dz) return;
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
@@ -723,7 +726,8 @@ function handleFile(type, input){
     if(f&&f.name.endsWith('.pdf')){
       files[t]=f;
       const el=document.getElementById('fn-'+t);
-      el.textContent='✓ '+f.name+' ('+Math.round(f.size/1024)+' KB)';
+      const mb=f.size/1024/1024;
+      el.textContent='✓ '+f.name+' ('+Math.round(mb*10)/10+' MB)';
       el.classList.add('show');
     }
   });
@@ -964,33 +968,6 @@ function downloadTranslation(){
 
 function downloadTranslationDocx(){
   if(!transText){setStatus('translate','אין תרגום לשמירה','error');return}
-  // Build minimal valid DOCX (Office Open XML) with RTL Hebrew support
-  const escaped=transText
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .split('\n').map(line=>
-      `<w:p><w:pPr><w:bidi/><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:rtl/><w:lang w:bidi="he-IL"/></w:rPr><w:t xml:space="preserve">${line||' '}</w:t></w:r></w:p>`
-    ).join('');
-  const docxml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-<w:body>
-<w:sectPr><w:bidi/></w:sectPr>
-${escaped}
-</w:body></w:document>`;
-  const relsxml=`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`;
-  const wordRelsxml=`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-</Relationships>`;
-  const contentTypes=`<?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`;
-  // Use JSZip-like approach — manual ZIP via Blob
-  // Since we can't use JSZip easily, create an HTML file styled like Word
   const html=`<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8">
@@ -1004,23 +981,26 @@ ${escaped}
   const a=document.createElement('a');
   a.href=url;a.download='translation.doc';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setStatus('translate','✅ הקובץ הורד! פתח אותו עם Word או Google Docs.','success');
 }
 
 function downloadTranslationPdf(){
   if(!transText){setStatus('translate','אין תרגום לשמירה','error');return}
-  // Open print dialog — user can save as PDF
   const win=window.open('','_blank');
+  if(!win){setStatus('translate','⚠️ אפשר חלונות קופצים בדפדפן ונסה שוב','error');return}
   win.document.write(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head><meta charset="UTF-8">
 <style>
   body{font-family:Arial,sans-serif;font-size:13pt;line-height:1.8;direction:rtl;text-align:right;margin:2cm;color:#000}
   p{margin:0 0 0.5em 0}
-  @media print{body{margin:1.5cm}}
+  .hint{position:fixed;top:10px;right:10px;background:#1a1a2e;color:#fff;padding:12px 16px;border-radius:8px;font-size:12pt;direction:rtl;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+  @media print{.hint{display:none}body{margin:1.5cm}}
 </style></head>
 <body>
+<div class="hint">💡 לשמירה כ-PDF: לחץ Ctrl+P ← בחר "שמור כ-PDF"</div>
 ${transText.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('')}
-<script>window.onload=function(){window.print()}<\/script>
+<script>setTimeout(function(){window.print()},500)<\/script>
 </body></html>`);
   win.document.close();
 }
@@ -1435,10 +1415,12 @@ async function recordAudio(){
 
     const lang=document.getElementById('tts-lang').value;
     const chunks=splitTextToChunks(cleanTextForTTS(ttsText));
+    const estMinutes=Math.ceil(chunks.length*0.8/60*chunks.length/chunks.length);
+    const estMsg=chunks.length>10?` — צפי: ${Math.ceil(chunks.length*1.5/60)} דקות`:'';
     const buffers=[];
 
     for(let i=0;i<chunks.length;i++){
-      setStatus('tts',`ממיר לMP3... ${i+1}/${chunks.length} חלקים`,'info');
+      setStatus('tts',`ממיר לMP3... ${i+1}/${chunks.length} חלקים${i===0?estMsg:''}` ,'info');
       setProgress('tts',30+Math.round((i/chunks.length)*60));
       const resp=await fetch(TTS_WORKER+'/tts',{
         method:'POST',
