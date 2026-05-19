@@ -2,7 +2,7 @@
   "name": "מעבדת PDF",
   "short_name": "PDF Lab",
   "description": "כלי PDF — סיבוב, תרגום, פיצול, חיתוך, הקראה",
-  "start_url": "/pdf-lab/",
+  "start_url": "https://robyg25.github.io/pdf-lab",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#7c6ff7",
