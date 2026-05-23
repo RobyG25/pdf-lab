@@ -294,6 +294,7 @@
     #crop-pages-grid{grid-template-columns:1fr !important}
     #crop-pages-grid canvas{max-width:100% !important;height:auto !important;touch-action:none}
     #crop-pages-grid .page-card{margin-bottom:0}
+    #remove-pages-grid{grid-template-columns:repeat(2,1fr) !important}
     /* Dropzone mobile */
     .dropzone{padding:2rem 1rem}
     .drop-icon{font-size:2rem}
@@ -322,6 +323,7 @@
   <button class="tab" data-tab="translate"><span class="tab-icon">🌐</span> תרגום</button>
   <button class="tab" data-tab="split"><span class="tab-icon">📰</span> פיצול עיתון</button>
   <button class="tab" data-tab="crop"><span class="tab-icon">✂️</span> חיתוך</button>
+  <button class="tab" data-tab="remove"><span class="tab-icon">🗑️</span> הסרת עמודים</button>
   <button class="tab" data-tab="tts"><span class="tab-icon">🔊</span> קריאה בקול</button>
 </div>
 
@@ -550,6 +552,47 @@
         <button class="btn btn-outline" onclick="closeCropPreview()">✕ סגור</button>
       </div>
       <div id="cropPreviewPages"></div>
+    </div>
+  </div>
+
+  <!-- ===== REMOVE PAGES ===== -->
+  <div class="panel" id="panel-remove">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> רוצה להסיר כריכה, עמוד שער, ביבליוגרפיה, או כל עמוד מיותר? לחץ X על העמודים שאתה רוצה למחוק — והקובץ החדש יוצר בלעדיהם.
+      </div>
+    </div>
+
+    <div id="remove-dropzone-wrap">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> בחר קובץ PDF</div>
+        <div class="dropzone" id="drop-remove">
+          <input type="file" accept=".pdf" id="remove-file-input" onchange="loadRemoveFile(this.files[0])">
+          <span class="drop-icon">🗑️</span>
+          <div class="drop-text">גרור PDF לכאן או לחץ לבחירה</div>
+          <div class="drop-sub">כל העמודים יוצגו — לחץ X על מה שרוצה להסיר</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="remove-main" style="display:none">
+      <div class="card" style="padding:0.9rem 1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+          <div style="font-size:0.85rem;color:var(--text2)">
+            לחץ <strong style="color:var(--accent3)">✕</strong> על עמוד להסרה. לחץ שוב לביטול.
+            <span id="remove-count-badge" style="margin-right:0.5rem;padding:2px 8px;border-radius:20px;background:rgba(255,107,107,0.15);color:var(--accent3);border:1px solid rgba(255,107,107,0.3);font-size:0.75rem;display:none"></span>
+          </div>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="resetRemove()">🔄 קובץ חדש</button>
+            <button class="btn btn-primary" id="remove-dl-btn" onclick="downloadRemoved()" disabled>⬇ הורד PDF ללא העמודים שנבחרו</button>
+          </div>
+        </div>
+        <div id="remove-prog-wrap" style="display:none;margin-top:0.75rem">
+          <div class="progress-bar show"><div class="progress-fill" id="remove-prog-fill"></div></div>
+          <div id="remove-status-msg" style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem"></div>
+        </div>
+      </div>
+      <div id="remove-pages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-top:0"></div>
     </div>
   </div>
 
@@ -1468,6 +1511,148 @@ function downloadTTSText(){
   const a=document.createElement('a');
   a.href=url;a.download='tts_text.txt';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ===== REMOVE PAGES =====
+let removePdfBytes=null, removePdfJsDoc=null, removeNumPages=0;
+const removedPages=new Set();
+
+(function(){
+  const dz=document.getElementById('drop-remove');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('drag');
+    const f=e.dataTransfer.files[0];
+    if(f&&f.name.endsWith('.pdf')) loadRemoveFile(f);
+  });
+})();
+
+async function loadRemoveFile(file){
+  if(!file)return;
+  const mb=file.size/1024/1024;
+  if(mb>100){alert(`הקובץ גדול מדי (${mb.toFixed(0)}MB). המגבלה היא 100MB.`);return;}
+  document.getElementById('remove-dropzone-wrap').style.display='none';
+  document.getElementById('remove-main').style.display='block';
+  showRemoveProg(0,1,'טוען...');
+  removePdfBytes=await file.arrayBuffer();
+  removePdfJsDoc=await pdfjsLib.getDocument({data:removePdfBytes.slice(0)}).promise;
+  removeNumPages=removePdfJsDoc.numPages;
+  removedPages.clear();
+  document.getElementById('remove-pages-grid').innerHTML='';
+  document.getElementById('remove-dl-btn').disabled=true;
+  updateRemoveBadge();
+  for(let i=1;i<=removeNumPages;i++){
+    showRemoveProg(i-1,removeNumPages,`מרנדר עמוד ${i}/${removeNumPages}...`);
+    await renderRemovePage(i);
+  }
+  hideRemoveProg();
+}
+
+async function renderRemovePage(i){
+  const grid=document.getElementById('remove-pages-grid');
+  const card=document.createElement('div');
+  card.id=`removecard-${i}`;
+  card.style.cssText='background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all 0.2s;cursor:pointer;position:relative';
+  card.onclick=()=>toggleRemovePage(i);
+  card.innerHTML=`
+    <div style="background:var(--surface2);padding:0.4rem 0.6rem;font-size:0.8rem;font-weight:500;display:flex;justify-content:space-between;align-items:center">
+      <span>עמוד ${i}</span>
+      <span id="remove-x-${i}" style="font-size:1rem;color:var(--text2)">✕</span>
+    </div>
+    <div id="removethumb-${i}" style="background:#0a0a0e;display:flex;align-items:center;justify-content:center;min-height:140px">
+      <div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite"></div>
+    </div>`;
+  grid.appendChild(card);
+  const pjsPage=await removePdfJsDoc.getPage(i);
+  const vp=pjsPage.getViewport({scale:1});
+  const scale=Math.min(240/vp.width,1.5);
+  const vp2=pjsPage.getViewport({scale});
+  const canvas=document.createElement('canvas');
+  canvas.width=vp2.width;canvas.height=vp2.height;
+  canvas.style.cssText='width:100%;height:auto;display:block';
+  await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp2}).promise;
+  const thumb=document.getElementById(`removethumb-${i}`);
+  thumb.innerHTML='';thumb.style.minHeight='unset';
+  thumb.appendChild(canvas);
+}
+
+function toggleRemovePage(i){
+  const card=document.getElementById(`removecard-${i}`);
+  const xBtn=document.getElementById(`remove-x-${i}`);
+  if(removedPages.has(i)){
+    removedPages.delete(i);
+    card.style.border='2px solid var(--border)';
+    card.style.opacity='1';
+    xBtn.style.color='var(--text2)';
+  } else {
+    removedPages.add(i);
+    card.style.border='2px solid var(--accent3)';
+    card.style.opacity='0.5';
+    xBtn.style.color='var(--accent3)';
+    xBtn.style.fontWeight='bold';
+  }
+  updateRemoveBadge();
+  document.getElementById('remove-dl-btn').disabled=removedPages.size===0||removedPages.size===removeNumPages;
+}
+
+function updateRemoveBadge(){
+  const badge=document.getElementById('remove-count-badge');
+  if(removedPages.size>0){
+    badge.textContent=`${removedPages.size} עמודים מסומנים למחיקה`;
+    badge.style.display='inline';
+  } else {
+    badge.style.display='none';
+  }
+}
+
+function showRemoveProg(done,total,msg){
+  document.getElementById('remove-prog-wrap').style.display='block';
+  document.getElementById('remove-prog-fill').style.width=Math.round((done/total)*100)+'%';
+  if(msg)document.getElementById('remove-status-msg').textContent=msg;
+}
+function hideRemoveProg(){
+  document.getElementById('remove-prog-fill').style.width='100%';
+  setTimeout(()=>{document.getElementById('remove-prog-wrap').style.display='none'},600);
+}
+
+function resetRemove(){
+  removePdfBytes=null;removePdfJsDoc=null;removeNumPages=0;removedPages.clear();
+  document.getElementById('remove-main').style.display='none';
+  document.getElementById('remove-dropzone-wrap').style.display='block';
+  document.getElementById('remove-pages-grid').innerHTML='';
+  document.getElementById('remove-dl-btn').disabled=true;
+  document.getElementById('remove-file-input').value='';
+}
+
+async function downloadRemoved(){
+  if(removedPages.size===0){return;}
+  document.getElementById('remove-dl-btn').disabled=true;
+  showRemoveProg(0,1,'מכין קובץ...');
+  try{
+    const srcDoc=await PDFLib.PDFDocument.load(removePdfBytes);
+    const newDoc=await PDFLib.PDFDocument.create();
+    const keepIdxs=[];
+    for(let i=1;i<=removeNumPages;i++){
+      if(!removedPages.has(i)) keepIdxs.push(i-1);
+    }
+    const pages=await newDoc.copyPages(srcDoc,keepIdxs);
+    pages.forEach(p=>newDoc.addPage(p));
+    showRemoveProg(1,1,'שומר...');
+    const bytes=await newDoc.save();
+    const blob=new Blob([bytes],{type:'application/pdf'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download='removed_pages.pdf';a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    hideRemoveProg();
+    document.getElementById('remove-status-msg').textContent=`✅ הורד! ${keepIdxs.length} עמודים נשמרו, ${removedPages.size} הוסרו.`;
+    document.getElementById('remove-prog-wrap').style.display='block';
+  }catch(err){
+    document.getElementById('remove-status-msg').textContent='❌ שגיאה: '+getFriendlyError(err.message);
+  }
+  document.getElementById('remove-dl-btn').disabled=false;
 }
 
 // ===== PWA Service Worker =====
