@@ -75,35 +75,62 @@
   .logo span{color:var(--accent2)}
   .header-sub{font-size:0.8rem;color:var(--text2);margin-top:2px}
 
-  /* TABS */
-  .tabs{
-    display:flex;
-    gap:0;
-    background:var(--surface2);
+  /* ACCORDION TABS */
+  .tabs-wrapper{
+    background:var(--surface);
     border-bottom:1px solid var(--border);
-    padding:0 2rem;
-    overflow-x:auto;
+    display:flex;
+    flex-direction:row;
+    align-items:flex-start;
+    padding:0.5rem 1.5rem;
+    gap:0.5rem;
+    position:relative;
+    z-index:10;
+  }
+  .tab-category{position:relative}
+  .cat-btn{
+    display:flex;align-items:center;gap:0.4rem;
+    padding:0.5rem 1rem;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text2);
+    font-family:'Heebo',sans-serif;
+    font-size:0.85rem;font-weight:600;
+    cursor:pointer;white-space:nowrap;
+    transition:all 0.2s;
+  }
+  .cat-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .cat-btn.active{background:rgba(124,111,247,0.12);border-color:var(--accent);color:var(--accent)}
+  .cat-arrow{font-size:0.65rem;transition:transform 0.2s}
+  .cat-items{
+    position:absolute;top:calc(100% + 6px);right:0;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:0.4rem;
+    display:flex;flex-direction:column;gap:0.15rem;
+    min-width:170px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    z-index:100;
   }
   .tab{
-    padding:1rem 1.4rem;
-    cursor:pointer;
-    font-size:0.9rem;
-    font-weight:500;
-    color:var(--text2);
-    border-bottom:2px solid transparent;
-    transition:all 0.2s;
-    white-space:nowrap;
-    display:flex;
-    align-items:center;
-    gap:0.5rem;
-    background:none;
-    border-top:none;
-    border-left:none;
-    border-right:none;
+    padding:0.55rem 0.9rem;
+    cursor:pointer;font-size:0.85rem;font-weight:500;
+    color:var(--text2);border-radius:7px;
+    transition:all 0.15s;white-space:nowrap;
+    display:flex;align-items:center;gap:0.5rem;
+    background:none;border:none;text-align:right;width:100%;
   }
-  .tab:hover{color:var(--text);background:rgba(124,111,247,0.05)}
-  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-  .tab-icon{font-size:1.1rem}
+  .tab:hover{color:var(--text);background:rgba(124,111,247,0.08)}
+  .tab.active{color:var(--accent);background:rgba(124,111,247,0.12);font-weight:700}
+  .tab-icon{font-size:1rem}
+
+  @media(max-width:600px){
+    .tabs-wrapper{padding:0.4rem 0.75rem;gap:0.35rem}
+    .cat-btn{padding:0.45rem 0.7rem;font-size:0.8rem}
+    .cat-items{min-width:150px}
+  }
 
   /* MAIN */
   .main{padding:2rem;max-width:900px;margin:0 auto}
@@ -318,13 +345,36 @@
   <span>הקבצים שלך <strong>לא עוזבים את המחשב</strong> — כל העיבוד מתבצע מקומית בדפדפן בלבד. אנחנו לא רואים, לא שומרים ולא שולחים שום מסמך.</span>
 </div>
 
-<div class="tabs">
-  <button class="tab active" data-tab="rotate"><span class="tab-icon">🔄</span> סיבוב</button>
-  <button class="tab" data-tab="translate"><span class="tab-icon">🌐</span> תרגום</button>
-  <button class="tab" data-tab="split"><span class="tab-icon">📰</span> פיצול עיתון</button>
-  <button class="tab" data-tab="crop"><span class="tab-icon">✂️</span> חיתוך</button>
-  <button class="tab" data-tab="remove"><span class="tab-icon">🗑️</span> הסרת עמודים</button>
-  <button class="tab" data-tab="tts"><span class="tab-icon">🔊</span> קריאה בקול</button>
+<div class="tabs-wrapper">
+  <div class="tab-category" id="cat-edit">
+    <button class="cat-btn active" onclick="toggleCat('edit')">
+      <span>✏️ עריכה</span><span class="cat-arrow">▼</span>
+    </button>
+    <div class="cat-items" id="catitems-edit">
+      <button class="tab active" data-tab="rotate">🔄 סיבוב</button>
+      <button class="tab" data-tab="crop">✂️ חיתוך</button>
+      <button class="tab" data-tab="remove">🗑️ הסרת עמודים</button>
+      <button class="tab" data-tab="reorder">↕️ סידור עמודים</button>
+    </div>
+  </div>
+  <div class="tab-category" id="cat-content">
+    <button class="cat-btn" onclick="toggleCat('content')">
+      <span>📄 תוכן</span><span class="cat-arrow">▶</span>
+    </button>
+    <div class="cat-items" id="catitems-content" style="display:none">
+      <button class="tab" data-tab="translate">🌐 תרגום</button>
+      <button class="tab" data-tab="tts">🔊 קריאה בקול</button>
+    </div>
+  </div>
+  <div class="tab-category" id="cat-manage">
+    <button class="cat-btn" onclick="toggleCat('manage')">
+      <span>🔧 ניהול</span><span class="cat-arrow">▶</span>
+    </button>
+    <div class="cat-items" id="catitems-manage" style="display:none">
+      <button class="tab" data-tab="merge">🔗 מיזוג</button>
+      <button class="tab" data-tab="split">📰 פיצול עיתון</button>
+    </div>
+  </div>
 </div>
 
 <div class="main">
@@ -596,6 +646,70 @@
     </div>
   </div>
 
+  <!-- ===== MERGE ===== -->
+  <div class="panel" id="panel-merge">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> יש לך כמה קבצי PDF נפרדים שאתה רוצה לאחד לקובץ אחד? למשל כמה חשבוניות, פרקים של ספר, או סריקות נפרדות.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> בחר קבצים למיזוג</div>
+      <div class="dropzone" id="drop-merge" style="cursor:pointer">
+        <input type="file" accept=".pdf" multiple onchange="addMergeFiles(this.files)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+        <span class="drop-icon">🔗</span>
+        <div class="drop-text">גרור קבצי PDF לכאן או לחץ לבחירה</div>
+        <div class="drop-sub">אפשר לבחור כמה קבצים בבת אחת</div>
+      </div>
+    </div>
+    <div class="card" id="merge-list-card" style="display:none">
+      <div class="card-title"><span class="dot"></span> סדר הקבצים <span style="font-size:0.8rem;color:var(--text2);font-weight:400">(גרור לשינוי סדר)</span></div>
+      <div id="merge-list" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem"></div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="doMerge()">🔗 מזג לקובץ אחד</button>
+        <button class="btn btn-outline" onclick="resetMerge()">🔄 התחל מחדש</button>
+      </div>
+      <div class="status" id="status-merge"></div>
+      <div class="progress-bar" id="prog-merge"><div class="progress-fill" id="progf-merge"></div></div>
+    </div>
+  </div>
+
+  <!-- ===== REORDER ===== -->
+  <div class="panel" id="panel-reorder">
+    <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
+      <div style="font-size:0.9rem;color:var(--text2);line-height:1.6">
+        📋 <strong style="color:var(--text)">מתי להשתמש?</strong> סרקת דפים בסדר לא נכון? רוצה להזיז עמוד מהסוף להתחלה? גרור את העמודים לסדר שאתה רוצה.
+      </div>
+    </div>
+    <div id="reorder-dropzone-wrap">
+      <div class="card">
+        <div class="card-title"><span class="dot"></span> בחר קובץ PDF לסידור מחדש</div>
+        <div class="dropzone" id="drop-reorder">
+          <input type="file" accept=".pdf" id="reorder-file-input" onchange="loadReorderFile(this.files[0])">
+          <span class="drop-icon">↕️</span>
+          <div class="drop-text">גרור PDF לכאן או לחץ לבחירה</div>
+          <div class="drop-sub">כל העמודים יוצגו — גרור לסדר הרצוי</div>
+        </div>
+      </div>
+    </div>
+    <div id="reorder-main" style="display:none">
+      <div class="card" style="padding:0.9rem 1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem">
+          <div style="font-size:0.85rem;color:var(--text2)">↕️ גרור עמודים לשינוי הסדר</div>
+          <div style="display:flex;gap:0.75rem">
+            <button class="btn btn-outline" onclick="resetReorder()">🔄 קובץ חדש</button>
+            <button class="btn btn-primary" onclick="downloadReordered()">⬇ הורד PDF מסודר</button>
+          </div>
+        </div>
+        <div id="reorder-prog-wrap" style="display:none;margin-top:0.75rem">
+          <div class="progress-bar show"><div class="progress-fill" id="reorder-prog-fill"></div></div>
+          <div id="reorder-status-msg" style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem"></div>
+        </div>
+      </div>
+      <div id="reorder-pages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-top:0"></div>
+    </div>
+  </div>
+
   <!-- ===== TTS ===== -->
   <div class="panel" id="panel-tts">
     <div class="card" style="background:rgba(124,111,247,0.06);border-color:rgba(124,111,247,0.2)">
@@ -721,6 +835,35 @@ function resetPanel(type){
     if(tesseractWorker){tesseractWorker.terminate();tesseractWorker=null;}
   }
 }
+// ===== ACCORDION TABS =====
+const catMap={'edit':['rotate','crop','remove','reorder'],'content':['translate','tts'],'manage':['merge','split']};
+
+function toggleCat(cat){
+  const items=document.getElementById('catitems-'+cat);
+  const btn=items.previousElementSibling;
+  const isOpen=items.style.display!=='none';
+  Object.keys(catMap).forEach(c=>{
+    document.getElementById('catitems-'+c).style.display='none';
+    document.querySelector(`#cat-${c} .cat-btn`).classList.remove('active');
+    document.querySelector(`#cat-${c} .cat-arrow`).textContent='▶';
+  });
+  if(!isOpen){
+    items.style.display='flex';
+    btn.classList.add('active');
+    btn.querySelector('.cat-arrow').textContent='▼';
+  }
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.tabs-wrapper')){
+    Object.keys(catMap).forEach(c=>{
+      document.getElementById('catitems-'+c).style.display='none';
+      document.querySelector(`#cat-${c} .cat-btn`).classList.remove('active');
+      document.querySelector(`#cat-${c} .cat-arrow`).textContent='▶';
+    });
+  }
+});
+
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click',function(e){
     e.stopPropagation();
@@ -728,6 +871,18 @@ document.querySelectorAll('.tab').forEach(btn=>{
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     this.classList.add('active');
     document.getElementById('panel-'+this.dataset.tab).classList.add('active');
+    // עדכן סגנון cat-btn לפי הטאב הפעיל
+    Object.entries(catMap).forEach(([cat,tabs])=>{
+      const catBtn=document.querySelector(`#cat-${cat} .cat-btn`);
+      catBtn.style.borderColor=tabs.includes(this.dataset.tab)?'var(--accent)':'';
+      catBtn.style.color=tabs.includes(this.dataset.tab)?'var(--accent)':'';
+    });
+    // סגור dropdown
+    Object.keys(catMap).forEach(c=>{
+      document.getElementById('catitems-'+c).style.display='none';
+      document.querySelector(`#cat-${c} .cat-arrow`).textContent='▶';
+      document.querySelector(`#cat-${c} .cat-btn`).classList.remove('active');
+    });
   });
 });
 
@@ -1511,6 +1666,212 @@ function downloadTTSText(){
   const a=document.createElement('a');
   a.href=url;a.download='tts_text.txt';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ===== MERGE =====
+let mergeFiles=[];
+
+(function(){
+  const dz=document.getElementById('drop-merge');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('drag');
+    addMergeFiles(e.dataTransfer.files);
+  });
+})();
+
+function addMergeFiles(fileList){
+  for(const f of fileList){
+    if(f.name.endsWith('.pdf')) mergeFiles.push(f);
+  }
+  renderMergeList();
+}
+
+function renderMergeList(){
+  if(mergeFiles.length===0){
+    document.getElementById('merge-list-card').style.display='none';
+    return;
+  }
+  document.getElementById('merge-list-card').style.display='block';
+  const list=document.getElementById('merge-list');
+  list.innerHTML='';
+  mergeFiles.forEach((f,i)=>{
+    const item=document.createElement('div');
+    item.dataset.idx=i;
+    item.draggable=true;
+    item.style.cssText='display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:grab;transition:all 0.2s';
+    item.innerHTML=`
+      <span style="color:var(--text2);font-size:1.1rem">⠿</span>
+      <span style="flex:1;font-size:0.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${f.name}</span>
+      <span style="font-size:0.75rem;color:var(--text2)">${(f.size/1024/1024).toFixed(1)}MB</span>
+      <button onclick="removeMergeFile(${i})" style="background:none;border:none;color:var(--accent3);cursor:pointer;font-size:1rem;padding:0 0.25rem">✕</button>`;
+    item.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',i);item.style.opacity='0.5'});
+    item.addEventListener('dragend',()=>{item.style.opacity='1'});
+    item.addEventListener('dragover',e=>{e.preventDefault();item.style.borderColor='var(--accent)'});
+    item.addEventListener('dragleave',()=>{item.style.borderColor='var(--border)'});
+    item.addEventListener('drop',e=>{
+      e.preventDefault();item.style.borderColor='var(--border)';
+      const from=parseInt(e.dataTransfer.getData('text/plain'));
+      const to=parseInt(item.dataset.idx);
+      if(from===to)return;
+      const moved=mergeFiles.splice(from,1)[0];
+      mergeFiles.splice(to,0,moved);
+      renderMergeList();
+    });
+    list.appendChild(item);
+  });
+}
+
+function removeMergeFile(i){
+  mergeFiles.splice(i,1);
+  renderMergeList();
+}
+
+function resetMerge(){
+  mergeFiles=[];
+  document.getElementById('merge-list-card').style.display='none';
+  document.getElementById('merge-list').innerHTML='';
+  hideStatus('merge');
+}
+
+async function doMerge(){
+  if(mergeFiles.length<2){setStatus('merge','⚠️ בחר לפחות 2 קבצים למיזוג','error');return}
+  setStatus('merge','ממזג...','info');setProgress('merge',10);
+  try{
+    const merged=await PDFLib.PDFDocument.create();
+    for(let i=0;i<mergeFiles.length;i++){
+      setProgress('merge',10+Math.round((i/mergeFiles.length)*80));
+      setStatus('merge',`ממזג קובץ ${i+1}/${mergeFiles.length}...`,'info');
+      const ab=await readFileAsArrayBuffer(mergeFiles[i]);
+      const doc=await PDFLib.PDFDocument.load(ab);
+      const pages=await merged.copyPages(doc,[...Array(doc.getPageCount()).keys()]);
+      pages.forEach(p=>merged.addPage(p));
+    }
+    setProgress('merge',95);
+    const bytes=await merged.save();
+    downloadBlob(bytes,'merged.pdf');
+    setProgress('merge',100);
+    setStatus('merge',`✅ מוזג בהצלחה! ${mergeFiles.length} קבצים → קובץ אחד.`,'success');
+  }catch(e){setStatus('merge',getFriendlyError(e.message),'error')}
+}
+
+// ===== REORDER =====
+let reorderPdfBytes=null, reorderPdfJsDoc=null, reorderNumPages=0, reorderOrder=[];
+
+(function(){
+  const dz=document.getElementById('drop-reorder');
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('drag');
+    const f=e.dataTransfer.files[0];
+    if(f&&f.name.endsWith('.pdf')) loadReorderFile(f);
+  });
+})();
+
+async function loadReorderFile(file){
+  if(!file)return;
+  document.getElementById('reorder-dropzone-wrap').style.display='none';
+  document.getElementById('reorder-main').style.display='block';
+  showReorderProg(0,1,'טוען...');
+  reorderPdfBytes=await file.arrayBuffer();
+  reorderPdfJsDoc=await pdfjsLib.getDocument({data:reorderPdfBytes.slice(0)}).promise;
+  reorderNumPages=reorderPdfJsDoc.numPages;
+  reorderOrder=[...Array(reorderNumPages).keys()].map(i=>i+1);
+  document.getElementById('reorder-pages-grid').innerHTML='';
+  for(let i=1;i<=reorderNumPages;i++){
+    showReorderProg(i-1,reorderNumPages,`מרנדר עמוד ${i}/${reorderNumPages}...`);
+    await renderReorderPage(i);
+  }
+  hideReorderProg();
+}
+
+async function renderReorderPage(i){
+  const grid=document.getElementById('reorder-pages-grid');
+  const card=document.createElement('div');
+  card.id=`reordercard-${i}`;
+  card.dataset.page=i;
+  card.draggable=true;
+  card.style.cssText='background:var(--surface);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:grab;transition:border-color 0.2s';
+  card.innerHTML=`
+    <div style="background:var(--surface2);padding:0.4rem 0.6rem;font-size:0.8rem;font-weight:500;display:flex;justify-content:space-between;align-items:center">
+      <span>⠿ עמוד ${i}</span>
+    </div>
+    <div id="reorderthumb-${i}" style="background:#0a0a0e;display:flex;align-items:center;justify-content:center;min-height:140px">
+      <div style="width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite"></div>
+    </div>`;
+  card.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',i);card.style.opacity='0.4'});
+  card.addEventListener('dragend',()=>{card.style.opacity='1'});
+  card.addEventListener('dragover',e=>{e.preventDefault();card.style.borderColor='var(--accent)'});
+  card.addEventListener('dragleave',()=>{card.style.borderColor='var(--border)'});
+  card.addEventListener('drop',e=>{
+    e.preventDefault();card.style.borderColor='var(--border)';
+    const from=parseInt(e.dataTransfer.getData('text/plain'));
+    const to=parseInt(card.dataset.page);
+    if(from===to)return;
+    const fi=reorderOrder.indexOf(from);
+    const ti=reorderOrder.indexOf(to);
+    reorderOrder.splice(fi,1);
+    reorderOrder.splice(ti,0,from);
+    // re-render grid in new order
+    const g=document.getElementById('reorder-pages-grid');
+    reorderOrder.forEach(p=>{
+      const c=document.getElementById(`reordercard-${p}`);
+      g.appendChild(c);
+    });
+  });
+  grid.appendChild(card);
+  const pjsPage=await reorderPdfJsDoc.getPage(i);
+  const vp=pjsPage.getViewport({scale:1});
+  const scale=Math.min(240/vp.width,1.5);
+  const vp2=pjsPage.getViewport({scale});
+  const canvas=document.createElement('canvas');
+  canvas.width=vp2.width;canvas.height=vp2.height;
+  canvas.style.cssText='width:100%;height:auto;display:block';
+  await pjsPage.render({canvasContext:canvas.getContext('2d'),viewport:vp2}).promise;
+  const thumb=document.getElementById(`reorderthumb-${i}`);
+  thumb.innerHTML='';thumb.style.minHeight='unset';
+  thumb.appendChild(canvas);
+}
+
+function showReorderProg(done,total,msg){
+  document.getElementById('reorder-prog-wrap').style.display='block';
+  document.getElementById('reorder-prog-fill').style.width=Math.round((done/total)*100)+'%';
+  if(msg)document.getElementById('reorder-status-msg').textContent=msg;
+}
+function hideReorderProg(){
+  document.getElementById('reorder-prog-fill').style.width='100%';
+  setTimeout(()=>{document.getElementById('reorder-prog-wrap').style.display='none'},600);
+}
+
+function resetReorder(){
+  reorderPdfBytes=null;reorderPdfJsDoc=null;reorderNumPages=0;reorderOrder=[];
+  document.getElementById('reorder-main').style.display='none';
+  document.getElementById('reorder-dropzone-wrap').style.display='block';
+  document.getElementById('reorder-pages-grid').innerHTML='';
+  document.getElementById('reorder-file-input').value='';
+}
+
+async function downloadReordered(){
+  showReorderProg(0,1,'מכין קובץ...');
+  try{
+    const srcDoc=await PDFLib.PDFDocument.load(reorderPdfBytes);
+    const newDoc=await PDFLib.PDFDocument.create();
+    const idxs=reorderOrder.map(p=>p-1);
+    const pages=await newDoc.copyPages(srcDoc,idxs);
+    pages.forEach(p=>newDoc.addPage(p));
+    showReorderProg(1,1,'שומר...');
+    const bytes=await newDoc.save();
+    downloadBlob(bytes,'reordered.pdf');
+    hideReorderProg();
+    document.getElementById('reorder-status-msg').textContent='✅ הקובץ המסודר הורד בהצלחה!';
+    document.getElementById('reorder-prog-wrap').style.display='block';
+  }catch(err){
+    document.getElementById('reorder-status-msg').textContent='❌ '+getFriendlyError(err.message);
+  }
 }
 
 // ===== REMOVE PAGES =====
